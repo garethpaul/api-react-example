@@ -31,32 +31,42 @@ Additional scan context:
 
 - Git
 - Node.js and npm
+- Corepack
 
 ### Setup
 
 ```bash
 git clone https://github.com/garethpaul/api-react-example.git
 cd api-react-example
-npm install
+corepack yarn install --frozen-lockfile
 ```
 
 The setup commands above are derived from repository files. Legacy mobile, Python, or JavaScript samples may require older SDKs or package versions than a modern workstation uses by default.
 
 ## Running or Using the Project
 
-- Run `npm start` for the default development command.
+- Run `corepack yarn start` for the default development command.
 
-Detected npm scripts:
+Detected package scripts:
 
-- `npm run build` - `react-scripts build`
-- `npm run eject` - `react-scripts eject`
-- `npm run start` - `react-scripts start`
-- `npm run test` - `react-scripts test`
-- `npm run verify` - `sh scripts/check-baseline.sh && CI=true react-scripts test --watchAll=false && react-scripts build`
+- `corepack yarn build` - `react-scripts build`
+- `corepack yarn eject` - `react-scripts eject`
+- `corepack yarn lint` - `eslint src --max-warnings=0`
+- `corepack yarn start` - `react-scripts start`
+- `corepack yarn test` - `react-scripts test`
+- `corepack yarn verify` - `sh scripts/check-baseline.sh && eslint src --max-warnings=0 && CI=true react-scripts test --watchAll=false && react-scripts build`
 
 ## Testing and Verification
 
-- `npm test`
+Run the source baseline, lint, tests, and production build:
+
+```sh
+sh scripts/check-baseline.sh
+corepack yarn lint
+CI=true corepack yarn test --watchAll=false
+corepack yarn build
+corepack yarn verify
+```
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
@@ -74,6 +84,7 @@ When the required SDK or runtime is unavailable, use static checks and source re
 
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
 - See `VISION.md` for project direction and contribution guardrails.
+- See `CHANGES.md` for the maintenance history.
 
 ## Contributing
 
@@ -84,4 +95,3 @@ Keep changes small and tied to the project that is already present in this repos
 Prior README summary:
 
 > api-react-example <!-- README-OVERVIEW-IMAGE --> This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app). Quality Gates Use Corepack to run the Yarn 1 project without installing a separate Yarn binary: Run the local test and production build gates together: `verify` runs the SDK-free source baseline check before tests and the production
-
