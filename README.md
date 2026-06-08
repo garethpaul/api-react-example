@@ -97,4 +97,4 @@ Keep changes small and tied to the project that is already present in this repos
 
 Prior README summary:
 
-> api-react-example <!-- README-OVERVIEW-IMAGE --> This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app). Quality Gates Use Corepack to run the Yarn 1 project without installing a separate Yarn binary: Run the local test and production build gates together: `verify` runs the SDK-free source baseline check before tests and the production
+> api-react-example This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app). Quality Gates Use Corepack to run the Yarn 1 project without installing a separate Yarn binary: Run the local test and production build gates together: `verify` runs the SDK-free source baseline check before tests and the production
