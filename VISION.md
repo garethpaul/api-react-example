@@ -41,7 +41,7 @@ credentials, or user-specific endpoints directly to source code.
 Future API examples should prefer HTTPS endpoints and make failure behavior
 visible to users and tests.
 
-## What We Will Not Merge For Now
+## What We Will Not Merge (For Now)
 
 - Production app claims that are not supported by tests and configuration
 - API integrations requiring committed secrets
