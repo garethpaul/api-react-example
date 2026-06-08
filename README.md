@@ -1,5 +1,8 @@
 # api-react-example
 
+<!-- README-OVERVIEW-IMAGE -->
+![Project overview](docs/readme-overview.svg)
+
 ## Overview
 
 `garethpaul/api-react-example` is a JavaScript web application or frontend sample. React API Sample
