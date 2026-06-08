@@ -47,3 +47,6 @@ visible to users and tests.
 - API integrations requiring committed secrets
 - Framework rewrites that obscure the basic React data-loading lesson
 - Test removals without replacement coverage for rendered behavior
+
+This list is a roadmap guardrail, not a permanent rule.
+Strong user demand and strong technical rationale can change it.
