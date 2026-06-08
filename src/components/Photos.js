@@ -1,6 +1,15 @@
 import React from 'react';
 
 export const PHOTO_ENDPOINT = 'https://jsonplaceholder.typicode.com/photos';
+export const MAX_PHOTOS = 12;
+
+export function normalizePhotos(photos) {
+  if (!Array.isArray(photos)) {
+    throw new Error('Photo response must be an array.');
+  }
+
+  return photos.slice(0, MAX_PHOTOS);
+}
 
 class Photos extends React.Component {
   state = {
@@ -20,7 +29,7 @@ class Photos extends React.Component {
         throw new Error(`Photo request failed with ${response.status}`);
       }
 
-      const photos = await response.json();
+      const photos = normalizePhotos(await response.json());
       this.setState({ photos, loading: false, error: null });
     } catch (error) {
       this.setState({

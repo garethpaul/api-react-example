@@ -62,6 +62,26 @@ if ! grep -Fq "role=\"alert\"" "$PHOTOS"; then
   exit 1
 fi
 
+if ! grep -Fq "MAX_PHOTOS = 12" "$PHOTOS"; then
+  printf '%s\n' "Photos component must cap rendered API results." >&2
+  exit 1
+fi
+
+if ! grep -Fq "function normalizePhotos" "$PHOTOS"; then
+  printf '%s\n' "Photos component must normalize API responses before rendering." >&2
+  exit 1
+fi
+
+if ! grep -Fq "Array.isArray(photos)" "$PHOTOS"; then
+  printf '%s\n' "Photos component must reject non-array API responses." >&2
+  exit 1
+fi
+
+if ! grep -Fq "photos.slice(0, MAX_PHOTOS)" "$PHOTOS"; then
+  printf '%s\n' "Photos component must limit rendered API responses." >&2
+  exit 1
+fi
+
 if ! grep -Fq "mockFetchSuccess" "$APP_TEST"; then
   printf '%s\n' "Tests must mock fetch success without network access." >&2
   exit 1
@@ -69,6 +89,16 @@ fi
 
 if ! grep -Fq "not ok" "$APP_TEST"; then
   printf '%s\n' "Tests must cover non-OK HTTP responses." >&2
+  exit 1
+fi
+
+if ! grep -Fq "photo response is not an array" "$APP_TEST"; then
+  printf '%s\n' "Tests must cover non-array photo responses." >&2
+  exit 1
+fi
+
+if ! grep -Fq "limits rendered photos from large API responses" "$APP_TEST"; then
+  printf '%s\n' "Tests must cover large photo response limits." >&2
   exit 1
 fi
 

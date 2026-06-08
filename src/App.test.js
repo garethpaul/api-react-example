@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import App from './App';
-import Photos, { PHOTO_ENDPOINT } from './components/Photos';
+import Photos, { MAX_PHOTOS, PHOTO_ENDPOINT } from './components/Photos';
 
 const photos = [
   {
@@ -74,4 +74,29 @@ test('renders an error state when the photo request is not ok', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent(
     'Unable to load photos.'
   );
+});
+
+test('renders an error state when the photo response is not an array', async () => {
+  mockFetchSuccess({ unexpected: true });
+
+  render(<Photos />);
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Unable to load photos.'
+  );
+});
+
+test('limits rendered photos from large API responses', async () => {
+  const manyPhotos = Array.from({ length: MAX_PHOTOS + 1 }, (_, index) => ({
+    id: index + 1,
+    title: `Photo ${index + 1}`,
+    thumbnailUrl: `https://example.com/${index + 1}.jpg`,
+  }));
+  mockFetchSuccess(manyPhotos);
+
+  render(<Photos />);
+
+  expect(await screen.findByText('Photo 1')).toBeInTheDocument();
+  expect(screen.getByText(`Photo ${MAX_PHOTOS}`)).toBeInTheDocument();
+  expect(screen.queryByText(`Photo ${MAX_PHOTOS + 1}`)).not.toBeInTheDocument();
 });
