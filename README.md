@@ -92,9 +92,3 @@ When the required SDK or runtime is unavailable, use static checks and source re
 ## Contributing
 
 Keep changes small and tied to the project that is already present in this repository. For code changes, document the toolchain used, avoid committing generated dependency directories or local configuration, and update this README when setup or verification steps change.
-
-## Existing Project Notes
-
-Prior README summary:
-
-> api-react-example This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app). Quality Gates Use Corepack to run the Yarn 1 project without installing a separate Yarn binary: Run the local test and production build gates together: `verify` runs the SDK-free source baseline check before tests and the production
