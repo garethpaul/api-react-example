@@ -39,7 +39,6 @@ Canonical security policy and reporting:
 
 - [`SECURITY.md`](SECURITY.md)
 
-
 This sample fetches public placeholder data. Do not add private API keys,
 credentials, or user-specific endpoints directly to source code.
 
