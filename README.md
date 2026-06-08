@@ -1,98 +1,87 @@
 # api-react-example
 
-<!-- README-OVERVIEW-IMAGE -->
-![Project overview](docs/readme-overview.svg)
+## Overview
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+`garethpaul/api-react-example` is a JavaScript web application or frontend sample. React API Sample
 
-## Quality Gates
+This README is based on the checked-in source, manifests, scripts, and repository metadata on the `master` branch. The project language mix found during review was: JavaScript (6), shell (1).
 
-Use Corepack to run the Yarn 1 project without installing a separate Yarn binary:
+## Repository Contents
+
+- `README.md` - project overview and local usage notes
+- `package.json` - JavaScript dependency and script metadata
+- `docs` - source or example code
+- `public` - source or example code
+- `scripts` - source or example code
+- `SECURITY.md` - security reporting and disclosure guidance
+- `src` - source or example code
+- `VISION.md` - project direction and maintenance guardrails
+- `yarn.lock` - JavaScript dependency and script metadata
+
+Additional scan context:
+
+- Source directories: docs, public, scripts, src
+- Dependency and build manifests: package.json, yarn.lock
+- Entry points or build surfaces: package.json
+- Test-looking files: docs/plans/2026-06-08-api-react-example-security-test-baseline.md, src/App.test.js, src/setupTests.js
+
+## Getting Started
+
+### Prerequisites
+
+- Git
+- Node.js and npm
+
+### Setup
 
 ```bash
-corepack yarn install --frozen-lockfile
-sh scripts/check-baseline.sh
-CI=true corepack yarn test --watchAll=false
-corepack yarn build
-corepack yarn audit --json
+git clone https://github.com/garethpaul/api-react-example.git
+cd api-react-example
+npm install
 ```
 
-Run the local test and production build gates together:
+The setup commands above are derived from repository files. Legacy mobile, Python, or JavaScript samples may require older SDKs or package versions than a modern workstation uses by default.
 
-```bash
-corepack yarn verify
-```
+## Running or Using the Project
 
-`verify` runs the SDK-free source baseline check before tests and the production
-build.
+- Run `npm start` for the default development command.
 
-The app is intentionally kept on React 18 and `react-scripts` 5.0.1 for this pass. A full React 19 migration should move off Create React App to a maintained build tool such as Vite and handle any residual audit findings there.
+Detected npm scripts:
 
-After the React 18 / CRA 5 refresh, `corepack yarn audit --json` reports 329 total advisories, down from 723 before this pass. The remaining advisories are part of the CRA 5 toolchain and should be handled with the future build-tool migration rather than by ejecting.
+- `npm run build` - `react-scripts build`
+- `npm run eject` - `react-scripts eject`
+- `npm run start` - `react-scripts start`
+- `npm run test` - `react-scripts test`
+- `npm run verify` - `sh scripts/check-baseline.sh && CI=true react-scripts test --watchAll=false && react-scripts build`
 
-## Available Scripts
+## Testing and Verification
 
-In the project directory, you can run:
+- `npm test`
 
-### `yarn start`
+When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
-Runs the app in the development mode.<br />
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+## Configuration and Secrets
 
-The page will reload if you make edits.<br />
-You will also see any lint errors in the console.
+- No required secret or credential file was identified in the repository scan. If you add integrations later, keep secrets out of git.
 
-### `yarn test`
+## Security and Privacy Notes
 
-Launches the test runner in the interactive watch mode.<br />
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- Review changes touching network requests, sockets, or service endpoints; examples from the scan include docs/plans/2026-06-08-api-react-example-security-test-baseline.md, public/index.html, public/robots.txt, scripts/check-baseline.sh, and 5 more.
+- Review changes touching file, media, JSON, XML, CSV, OCR, or data parsing; examples from the scan include docs/plans/2026-06-08-api-react-example-baseline-guard.md, docs/plans/2026-06-08-api-react-example-security-test-baseline.md, public/index.html, public/manifest.json, and 3 more.
+- Review changes touching database, model, or persistence code; examples from the scan include docs/plans/2026-06-08-api-react-example-baseline-guard.md, docs/plans/2026-06-08-api-react-example-security-test-baseline.md, src/serviceWorker.js.
 
-### `yarn build`
+## Maintenance Notes
 
-Builds the app for production to the `build` folder.<br />
-It correctly bundles React in production mode and optimizes the build for the best performance.
+- See `SECURITY.md` for vulnerability reporting and safe research guidance.
+- See `VISION.md` for project direction and contribution guardrails.
 
-The build is minified and the filenames include the hashes.<br />
-Your app is ready to be deployed!
+## Contributing
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Keep changes small and tied to the project that is already present in this repository. For code changes, document the toolchain used, avoid committing generated dependency directories or local configuration, and update this README when setup or verification steps change.
 
-### `yarn eject`
+## Existing Project Notes
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+Prior README summary:
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+> api-react-example <!-- README-OVERVIEW-IMAGE --> This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app). Quality Gates Use Corepack to run the Yarn 1 project without installing a separate Yarn binary: Run the local test and production build gates together: `verify` runs the SDK-free source baseline check before tests and the production
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
-
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/code-splitting
-
-### Analyzing the Bundle Size
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size
-
-### Making a Progressive Web App
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app
-
-### Advanced Configuration
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/advanced-configuration
-
-### Deployment
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/deployment
-
-### `yarn build` fails to minify
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify
