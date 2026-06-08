@@ -1,5 +1,8 @@
 ## API React Example Vision
 
+This document explains the current state and direction of the project.
+Project overview and developer docs: [`README.md`](README.md)
+
 API React Example is a small Create React App project that renders a photo list
 from the JSONPlaceholder photos API.
 
