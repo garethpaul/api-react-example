@@ -1,14 +1,9 @@
-import React, {Component} from 'react';
+import React from 'react';
 import './App.css';
-import Photos from './components/Photos'
+import Photos from './components/Photos';
 
-class App extends Component {
-  render () {
-    return (
-      // JSX to render goes here...
-      <Photos />
-    );
-  }
+function App() {
+  return <Photos />;
 }
 
 export default App;

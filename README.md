@@ -1,5 +1,26 @@
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
+## Quality Gates
+
+Use Corepack to run the Yarn 1 project without installing a separate Yarn binary:
+
+```bash
+corepack yarn install --frozen-lockfile
+CI=true corepack yarn test --watchAll=false
+corepack yarn build
+corepack yarn audit --json
+```
+
+Run the local test and production build gates together:
+
+```bash
+corepack yarn verify
+```
+
+The app is intentionally kept on React 18 and `react-scripts` 5.0.1 for this pass. A full React 19 migration should move off Create React App to a maintained build tool such as Vite and handle any residual audit findings there.
+
+After the React 18 / CRA 5 refresh, `corepack yarn audit --json` reports 329 total advisories, down from 723 before this pass. The remaining advisories are part of the CRA 5 toolchain and should be handled with the future build-tool migration rather than by ejecting.
+
 ## Available Scripts
 
 In the project directory, you can run:
