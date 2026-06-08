@@ -62,3 +62,16 @@ test('renders an error state when the photo request fails', async () => {
     'Unable to load photos.'
   );
 });
+
+test('renders an error state when the photo request is not ok', async () => {
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: false,
+    status: 500,
+  });
+
+  render(<Photos />);
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Unable to load photos.'
+  );
+});

@@ -15,7 +15,7 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "verify": "CI=true react-scripts test --watchAll=false && react-scripts build",
+    "verify": "sh scripts/check-baseline.sh && CI=true react-scripts test --watchAll=false && react-scripts build",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {

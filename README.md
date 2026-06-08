@@ -6,6 +6,7 @@ Use Corepack to run the Yarn 1 project without installing a separate Yarn binary
 
 ```bash
 corepack yarn install --frozen-lockfile
+sh scripts/check-baseline.sh
 CI=true corepack yarn test --watchAll=false
 corepack yarn build
 corepack yarn audit --json
@@ -16,6 +17,9 @@ Run the local test and production build gates together:
 ```bash
 corepack yarn verify
 ```
+
+`verify` runs the SDK-free source baseline check before tests and the production
+build.
 
 The app is intentionally kept on React 18 and `react-scripts` 5.0.1 for this pass. A full React 19 migration should move off Create React App to a maintained build tool such as Vite and handle any residual audit findings there.
 
