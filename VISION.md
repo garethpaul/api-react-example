@@ -22,6 +22,7 @@ Priority:
 - Make network assumptions visible instead of hidden in component code
 - Validate API item shape before rendering photo cards
 - Render only HTTPS thumbnail URLs from the API response
+- Normalize accepted API fields before using them in visible photo cards
 - Keep the app small enough for beginners to inspect
 
 Next priorities:

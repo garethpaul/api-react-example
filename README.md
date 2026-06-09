@@ -89,11 +89,15 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - Photo records are validated before rendering; malformed items use the existing
   error state instead of creating broken cards.
 - Thumbnail URLs must parse as HTTPS URLs before the app renders image elements.
+- Accepted photo titles and thumbnail URLs are normalized before they are used
+  in headings, alt text, and image sources.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
 - See `docs/plans/2026-06-08-api-react-example-check-wrapper.md` for the root
   verification wrapper baseline.
 - See `docs/plans/2026-06-09-photo-thumbnail-url-validation.md` for the HTTPS
   thumbnail validation baseline.
+- See `docs/plans/2026-06-09-photo-render-field-normalization.md` for the render
+  field normalization baseline.
 - See `VISION.md` for project direction and contribution guardrails.
 - See `CHANGES.md` for the maintenance history.
 

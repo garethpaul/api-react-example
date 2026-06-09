@@ -114,6 +114,27 @@ test('renders an error state when a photo thumbnail URL is not HTTPS', async () 
   expect(screen.queryByText('Insecure thumbnail')).not.toBeInTheDocument();
 });
 
+test('trims photo titles and normalizes thumbnail URLs before rendering', async () => {
+  mockFetchSuccess([
+    {
+      id: 1,
+      title: '  Trimmed photo  ',
+      thumbnailUrl: ' https://example.com/trimmed.jpg ',
+    },
+  ]);
+
+  render(<Photos />);
+
+  expect(
+    await screen.findByRole('heading', { name: 'Trimmed photo' })
+  ).toBeInTheDocument();
+  expect(screen.getByAltText('Trimmed photo')).toHaveAttribute(
+    'src',
+    'https://example.com/trimmed.jpg'
+  );
+  expect(screen.queryByText('  Trimmed photo  ')).not.toBeInTheDocument();
+});
+
 test('renders an error state when a malformed photo is beyond the render limit', async () => {
   const manyPhotos = Array.from({ length: MAX_PHOTOS + 1 }, (_, index) => ({
     id: index + 1,

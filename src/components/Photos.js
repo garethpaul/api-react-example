@@ -7,16 +7,25 @@ function hasText(value) {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
-function isHttpsUrl(value) {
+function normalizeHttpsUrl(value) {
   if (!hasText(value)) {
-    return false;
+    return null;
   }
 
   try {
-    return new URL(value).protocol === 'https:';
+    const url = new URL(value);
+    if (url.protocol !== 'https:') {
+      return null;
+    }
+
+    return url.href;
   } catch (error) {
-    return false;
+    return null;
   }
+}
+
+function isHttpsUrl(value) {
+  return normalizeHttpsUrl(value) !== null;
 }
 
 export function isRenderablePhoto(photo) {
@@ -30,6 +39,14 @@ export function isRenderablePhoto(photo) {
   );
 }
 
+function normalizePhoto(photo) {
+  return {
+    ...photo,
+    title: photo.title.trim(),
+    thumbnailUrl: normalizeHttpsUrl(photo.thumbnailUrl),
+  };
+}
+
 export function normalizePhotos(photos) {
   if (!Array.isArray(photos)) {
     throw new Error('Photo response must be an array.');
@@ -39,7 +56,7 @@ export function normalizePhotos(photos) {
     throw new Error('Photo records must include id, title, and thumbnailUrl.');
   }
 
-  return photos.slice(0, MAX_PHOTOS);
+  return photos.map(normalizePhoto).slice(0, MAX_PHOTOS);
 }
 
 class Photos extends React.Component {

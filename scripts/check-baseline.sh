@@ -8,6 +8,7 @@ APP_TEST="$ROOT_DIR/src/App.test.js"
 README="$ROOT_DIR/README.md"
 RECORD_SHAPE_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-record-shape-validation.md"
 THUMBNAIL_URL_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-thumbnail-url-validation.md"
+RENDER_FIELD_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-render-field-normalization.md"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
   printf '%s\n' "CHANGES.md must document repository maintenance." >&2
@@ -36,6 +37,16 @@ fi
 
 if ! grep -Fq "status: completed" "$THUMBNAIL_URL_PLAN" || ! grep -Fq "make check" "$THUMBNAIL_URL_PLAN"; then
   printf '%s\n' "Photo thumbnail URL validation plan must record completed status and make check verification." >&2
+  exit 1
+fi
+
+if [ ! -f "$RENDER_FIELD_PLAN" ]; then
+  printf '%s\n' "Photo render field normalization plan is missing." >&2
+  exit 1
+fi
+
+if ! grep -Fq "Status: Completed" "$RENDER_FIELD_PLAN" || ! grep -Fq "make check" "$RENDER_FIELD_PLAN"; then
+  printf '%s\n' "Photo render field normalization plan must record completed status and make check verification." >&2
   exit 1
 fi
 
@@ -99,7 +110,7 @@ if ! grep -Fq "Array.isArray(photos)" "$PHOTOS"; then
   exit 1
 fi
 
-if ! grep -Fq "photos.slice(0, MAX_PHOTOS)" "$PHOTOS"; then
+if ! grep -Fq "slice(0, MAX_PHOTOS)" "$PHOTOS"; then
   printf '%s\n' "Photos component must limit rendered API responses." >&2
   exit 1
 fi
@@ -124,7 +135,12 @@ if ! grep -Fq "function isHttpsUrl" "$PHOTOS"; then
   exit 1
 fi
 
-if ! grep -Fq "new URL(value)" "$PHOTOS" || ! grep -Fq "protocol === 'https:'" "$PHOTOS"; then
+if ! grep -Fq "function normalizeHttpsUrl" "$PHOTOS"; then
+  printf '%s\n' "Photos component must normalize accepted thumbnail URLs before rendering." >&2
+  exit 1
+fi
+
+if ! grep -Fq "new URL(value)" "$PHOTOS" || ! grep -Fq "protocol !== 'https:'" "$PHOTOS"; then
   printf '%s\n' "Photos component must require HTTPS thumbnail URLs." >&2
   exit 1
 fi
@@ -136,6 +152,26 @@ fi
 
 if ! grep -Fq "if (!photos.every(isRenderablePhoto))" "$PHOTOS"; then
   printf '%s\n' "Photos component must validate every API photo before applying the render limit." >&2
+  exit 1
+fi
+
+if ! grep -Fq "function normalizePhoto" "$PHOTOS"; then
+  printf '%s\n' "Photos component must normalize accepted photo fields before rendering." >&2
+  exit 1
+fi
+
+if ! grep -Fq "title: photo.title.trim()" "$PHOTOS"; then
+  printf '%s\n' "Photos component must trim accepted photo titles before rendering." >&2
+  exit 1
+fi
+
+if ! grep -Fq "thumbnailUrl: normalizeHttpsUrl(photo.thumbnailUrl)" "$PHOTOS"; then
+  printf '%s\n' "Photos component must render normalized HTTPS thumbnail URLs." >&2
+  exit 1
+fi
+
+if ! grep -Fq "photos.map(normalizePhoto).slice(0, MAX_PHOTOS)" "$PHOTOS"; then
+  printf '%s\n' "Photos component must normalize photos before applying the render cap." >&2
   exit 1
 fi
 
@@ -161,6 +197,11 @@ fi
 
 if ! grep -Fq "photo thumbnail URL is not HTTPS" "$APP_TEST"; then
   printf '%s\n' "Tests must cover insecure thumbnail URL responses." >&2
+  exit 1
+fi
+
+if ! grep -Fq "trims photo titles and normalizes thumbnail URLs before rendering" "$APP_TEST"; then
+  printf '%s\n' "Tests must cover accepted photo render field normalization." >&2
   exit 1
 fi
 
