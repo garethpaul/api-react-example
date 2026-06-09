@@ -10,7 +10,7 @@ broken UI.
 
 ## Scope
 
-- Validate API photo items before rendering the capped card list.
+- Validate each API photo item before slicing the render list.
 - Require usable `id`, `title`, and `thumbnailUrl` fields for rendered cards.
 - Add Jest coverage for malformed photo items.
 - Extend the source baseline guard and docs for the item-shape contract.
