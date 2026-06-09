@@ -2,6 +2,8 @@
 
 ## 2026-06-08
 
+- Added `make check` as the root wrapper for the React source baseline, lint,
+  tests, and production build.
 - Added photo API response normalization so non-array responses render the
   existing error state and large responses are capped before rendering.
 - Added an explicit ESLint gate for the React source tree and wired it into `verify`.

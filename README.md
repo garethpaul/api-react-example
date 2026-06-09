@@ -64,6 +64,7 @@ Detected package scripts:
 Run the source baseline, lint, tests, and production build:
 
 ```sh
+make check
 sh scripts/check-baseline.sh
 corepack yarn lint
 CI=true corepack yarn test --watchAll=false
@@ -86,6 +87,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 ## Maintenance Notes
 
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
+- See `docs/plans/2026-06-08-api-react-example-check-wrapper.md` for the root
+  verification wrapper baseline.
 - See `VISION.md` for project direction and contribution guardrails.
 - See `CHANGES.md` for the maintenance history.
 
