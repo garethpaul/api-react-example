@@ -146,6 +146,23 @@ test('renders an error state when photo ids are duplicated', async () => {
   expect(screen.queryByText('Second duplicate')).not.toBeInTheDocument();
 });
 
+test('renders an error state when a photo id is not a string or finite number', async () => {
+  mockFetchSuccess([
+    {
+      id: { value: 1 },
+      title: 'Object id',
+      thumbnailUrl: 'https://example.com/object-id.jpg',
+    },
+  ]);
+
+  render(<Photos />);
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Unable to load photos.'
+  );
+  expect(screen.queryByText('Object id')).not.toBeInTheDocument();
+});
+
 test('renders an error state when a photo thumbnail URL is not HTTPS', async () => {
   mockFetchSuccess([
     {

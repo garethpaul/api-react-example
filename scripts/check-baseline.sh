@@ -11,6 +11,7 @@ THUMBNAIL_URL_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-thumbnail-url-validati
 RENDER_FIELD_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-render-field-normalization.md"
 DUPLICATE_ID_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-duplicate-id-validation.md"
 UNMOUNT_GUARD_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-unmount-state-guard.md"
+PHOTO_ID_TYPE_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-id-type-validation.md"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
   printf '%s\n' "CHANGES.md must document repository maintenance." >&2
@@ -69,6 +70,16 @@ fi
 
 if ! grep -Fq "Status: Completed" "$UNMOUNT_GUARD_PLAN" || ! grep -Fq "make check" "$UNMOUNT_GUARD_PLAN"; then
   printf '%s\n' "Photo unmount state guard plan must record completed status and make check verification." >&2
+  exit 1
+fi
+
+if [ ! -f "$PHOTO_ID_TYPE_PLAN" ]; then
+  printf '%s\n' "Photo id type validation plan is missing." >&2
+  exit 1
+fi
+
+if ! grep -Fq "status: completed" "$PHOTO_ID_TYPE_PLAN" || ! grep -Fq "make check" "$PHOTO_ID_TYPE_PLAN"; then
+  printf '%s\n' "Photo id type validation plan must record completed status and make check verification." >&2
   exit 1
 fi
 
@@ -157,6 +168,21 @@ if ! grep -Fq "photo.id !== null" "$PHOTOS" || ! grep -Fq "photo.id !== undefine
   exit 1
 fi
 
+if ! grep -Fq "function isPhotoId" "$PHOTOS"; then
+  printf '%s\n' "Photos component must validate photo id types before rendering." >&2
+  exit 1
+fi
+
+if ! grep -Fq "Number.isFinite(value)" "$PHOTOS" || ! grep -Fq "hasText(value)" "$PHOTOS"; then
+  printf '%s\n' "Photos component must accept only finite numeric or non-empty string photo ids." >&2
+  exit 1
+fi
+
+if ! grep -Fq "isPhotoId(photo.id)" "$PHOTOS"; then
+  printf '%s\n' "Photos component must use key-safe photo id validation before rendering." >&2
+  exit 1
+fi
+
 if ! grep -Fq "hasText(photo.title)" "$PHOTOS"; then
   printf '%s\n' "Photos component must require title text before rendering." >&2
   exit 1
@@ -192,6 +218,16 @@ if ! grep -Fq "function normalizePhoto" "$PHOTOS"; then
   exit 1
 fi
 
+if ! grep -Fq "function normalizePhotoId" "$PHOTOS"; then
+  printf '%s\n' "Photos component must normalize accepted photo ids before rendering." >&2
+  exit 1
+fi
+
+if ! grep -Fq "id: normalizePhotoId(photo.id)" "$PHOTOS"; then
+  printf '%s\n' "Photos component must render normalized photo ids." >&2
+  exit 1
+fi
+
 if ! grep -Fq "title: photo.title.trim()" "$PHOTOS"; then
   printf '%s\n' "Photos component must trim accepted photo titles before rendering." >&2
   exit 1
@@ -212,7 +248,7 @@ if ! grep -Fq "function hasUniquePhotoIds" "$PHOTOS"; then
   exit 1
 fi
 
-if ! grep -Fq "String(photo.id)" "$PHOTOS" || ! grep -Fq "!hasUniquePhotoIds(photos)" "$PHOTOS"; then
+if ! grep -Fq "normalizePhotoId(photo.id)" "$PHOTOS" || ! grep -Fq "!hasUniquePhotoIds(photos)" "$PHOTOS"; then
   printf '%s\n' "Photos component must compare React key-compatible photo ids before rendering." >&2
   exit 1
 fi
@@ -239,6 +275,11 @@ fi
 
 if ! grep -Fq "photo ids are duplicated" "$APP_TEST"; then
   printf '%s\n' "Tests must cover duplicate photo id responses." >&2
+  exit 1
+fi
+
+if ! grep -Fq "photo id is not a string or finite number" "$APP_TEST"; then
+  printf '%s\n' "Tests must cover non-renderable photo id responses." >&2
   exit 1
 fi
 
@@ -309,6 +350,11 @@ fi
 
 if ! grep -Fq "corepack yarn verify" "$README"; then
   printf '%s\n' "README must document the combined verify gate." >&2
+  exit 1
+fi
+
+if ! grep -Fq "Photo IDs must be non-empty strings or finite numbers" "$README"; then
+  printf '%s\n' "README must document key-safe photo id validation." >&2
   exit 1
 fi
 

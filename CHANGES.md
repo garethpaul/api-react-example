@@ -2,6 +2,8 @@
 
 ## 2026-06-09
 
+- Required API photo IDs to be non-empty strings or finite numbers before
+  normalizing them for React keys.
 - Added an unmount guard around pending photo loads so late API responses do
   not call `setState` after the component has left the tree.
 - Rejected duplicate API photo IDs before rendering so React keys remain stable

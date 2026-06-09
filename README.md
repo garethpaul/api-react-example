@@ -92,6 +92,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - Accepted photo titles and thumbnail URLs are normalized before they are used
   in headings, alt text, and image sources.
 - Photo IDs must be unique after React key coercion before cards are rendered.
+- Photo IDs must be non-empty strings or finite numbers and are normalized
+  before React keys are rendered.
 - Pending photo loads skip state updates after the component unmounts.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
 - See `docs/plans/2026-06-08-api-react-example-check-wrapper.md` for the root
@@ -102,6 +104,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   field normalization baseline.
 - See `docs/plans/2026-06-09-photo-duplicate-id-validation.md` for the duplicate
   photo ID validation baseline.
+- See `docs/plans/2026-06-09-photo-id-type-validation.md` for the key-safe photo
+  ID type validation baseline.
 - See `docs/plans/2026-06-09-photo-unmount-state-guard.md` for the async unmount
   state-update guard.
 - See `VISION.md` for project direction and contribution guardrails.

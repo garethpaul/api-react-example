@@ -7,6 +7,17 @@ function hasText(value) {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
+function isPhotoId(value) {
+  return (
+    (typeof value === 'number' && Number.isFinite(value)) ||
+    hasText(value)
+  );
+}
+
+function normalizePhotoId(value) {
+  return String(value).trim();
+}
+
 function normalizeHttpsUrl(value) {
   if (!hasText(value)) {
     return null;
@@ -34,6 +45,7 @@ export function isRenderablePhoto(photo) {
     typeof photo === 'object' &&
     photo.id !== null &&
     photo.id !== undefined &&
+    isPhotoId(photo.id) &&
     hasText(photo.title) &&
     isHttpsUrl(photo.thumbnailUrl)
   );
@@ -42,6 +54,7 @@ export function isRenderablePhoto(photo) {
 function normalizePhoto(photo) {
   return {
     ...photo,
+    id: normalizePhotoId(photo.id),
     title: photo.title.trim(),
     thumbnailUrl: normalizeHttpsUrl(photo.thumbnailUrl),
   };
@@ -51,7 +64,7 @@ function hasUniquePhotoIds(photos) {
   const seenIds = new Set();
 
   return photos.every((photo) => {
-    const key = String(photo.id);
+    const key = normalizePhotoId(photo.id);
     if (seenIds.has(key)) {
       return false;
     }

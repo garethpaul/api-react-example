@@ -24,6 +24,7 @@ Priority:
 - Render only HTTPS thumbnail URLs from the API response
 - Normalize accepted API fields before using them in visible photo cards
 - Reject duplicate API photo IDs before React key rendering
+- Require photo IDs to be key-safe string or finite number values
 - Avoid state updates from pending API loads after unmount
 - Keep the app small enough for beginners to inspect
 
