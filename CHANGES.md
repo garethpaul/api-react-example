@@ -2,6 +2,8 @@
 
 ## 2026-06-09
 
+- Required photo thumbnail URLs to parse as HTTPS before rendering, with Jest
+  and source-baseline coverage for insecure URLs.
 - Added photo item shape validation so malformed records use the existing error
   state instead of rendering broken cards.
 - Added Jest and source-baseline coverage for missing photo render fields.

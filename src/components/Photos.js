@@ -7,6 +7,18 @@ function hasText(value) {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
+function isHttpsUrl(value) {
+  if (!hasText(value)) {
+    return false;
+  }
+
+  try {
+    return new URL(value).protocol === 'https:';
+  } catch (error) {
+    return false;
+  }
+}
+
 export function isRenderablePhoto(photo) {
   return (
     Boolean(photo) &&
@@ -14,7 +26,7 @@ export function isRenderablePhoto(photo) {
     photo.id !== null &&
     photo.id !== undefined &&
     hasText(photo.title) &&
-    hasText(photo.thumbnailUrl)
+    isHttpsUrl(photo.thumbnailUrl)
   );
 }
 

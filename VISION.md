@@ -21,6 +21,7 @@ Priority:
 - Keep `yarn start`, `yarn test`, and `yarn build` usable
 - Make network assumptions visible instead of hidden in component code
 - Validate API item shape before rendering photo cards
+- Render only HTTPS thumbnail URLs from the API response
 - Keep the app small enough for beginners to inspect
 
 Next priorities:
@@ -48,6 +49,7 @@ credentials, or user-specific endpoints directly to source code.
 
 Future API examples should prefer HTTPS endpoints and make failure behavior
 visible to users and tests.
+Rendered media URLs should be validated before they are placed in the DOM.
 
 ## What We Will Not Merge (For Now)
 

@@ -97,6 +97,23 @@ test('renders an error state when a photo item is missing render fields', async 
   expect(screen.queryByText('Missing thumbnail')).not.toBeInTheDocument();
 });
 
+test('renders an error state when a photo thumbnail URL is not HTTPS', async () => {
+  mockFetchSuccess([
+    {
+      id: 1,
+      title: 'Insecure thumbnail',
+      thumbnailUrl: 'http://example.com/insecure.jpg',
+    },
+  ]);
+
+  render(<Photos />);
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Unable to load photos.'
+  );
+  expect(screen.queryByText('Insecure thumbnail')).not.toBeInTheDocument();
+});
+
 test('renders an error state when a malformed photo is beyond the render limit', async () => {
   const manyPhotos = Array.from({ length: MAX_PHOTOS + 1 }, (_, index) => ({
     id: index + 1,

@@ -7,6 +7,7 @@ PHOTOS="$ROOT_DIR/src/components/Photos.js"
 APP_TEST="$ROOT_DIR/src/App.test.js"
 README="$ROOT_DIR/README.md"
 RECORD_SHAPE_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-record-shape-validation.md"
+THUMBNAIL_URL_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-thumbnail-url-validation.md"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
   printf '%s\n' "CHANGES.md must document repository maintenance." >&2
@@ -25,6 +26,16 @@ fi
 
 if ! grep -Fq "Status: Completed" "$RECORD_SHAPE_PLAN" || ! grep -Fq "make check" "$RECORD_SHAPE_PLAN"; then
   printf '%s\n' "Photo record shape validation plan must record completed status and make check verification." >&2
+  exit 1
+fi
+
+if [ ! -f "$THUMBNAIL_URL_PLAN" ]; then
+  printf '%s\n' "Photo thumbnail URL validation plan is missing." >&2
+  exit 1
+fi
+
+if ! grep -Fq "status: completed" "$THUMBNAIL_URL_PLAN" || ! grep -Fq "make check" "$THUMBNAIL_URL_PLAN"; then
+  printf '%s\n' "Photo thumbnail URL validation plan must record completed status and make check verification." >&2
   exit 1
 fi
 
@@ -103,8 +114,23 @@ if ! grep -Fq "photo.id !== null" "$PHOTOS" || ! grep -Fq "photo.id !== undefine
   exit 1
 fi
 
-if ! grep -Fq "hasText(photo.title)" "$PHOTOS" || ! grep -Fq "hasText(photo.thumbnailUrl)" "$PHOTOS"; then
-  printf '%s\n' "Photos component must require title and thumbnail URL text before rendering." >&2
+if ! grep -Fq "hasText(photo.title)" "$PHOTOS"; then
+  printf '%s\n' "Photos component must require title text before rendering." >&2
+  exit 1
+fi
+
+if ! grep -Fq "function isHttpsUrl" "$PHOTOS"; then
+  printf '%s\n' "Photos component must validate thumbnail URLs before rendering." >&2
+  exit 1
+fi
+
+if ! grep -Fq "new URL(value)" "$PHOTOS" || ! grep -Fq "protocol === 'https:'" "$PHOTOS"; then
+  printf '%s\n' "Photos component must require HTTPS thumbnail URLs." >&2
+  exit 1
+fi
+
+if ! grep -Fq "isHttpsUrl(photo.thumbnailUrl)" "$PHOTOS"; then
+  printf '%s\n' "Photos component must use HTTPS URL validation for thumbnails." >&2
   exit 1
 fi
 
@@ -130,6 +156,11 @@ fi
 
 if ! grep -Fq "photo item is missing render fields" "$APP_TEST"; then
   printf '%s\n' "Tests must cover malformed photo item responses." >&2
+  exit 1
+fi
+
+if ! grep -Fq "photo thumbnail URL is not HTTPS" "$APP_TEST"; then
+  printf '%s\n' "Tests must cover insecure thumbnail URL responses." >&2
   exit 1
 fi
 
