@@ -6,6 +6,7 @@ PACKAGE_JSON="$ROOT_DIR/package.json"
 PHOTOS="$ROOT_DIR/src/components/Photos.js"
 APP_TEST="$ROOT_DIR/src/App.test.js"
 README="$ROOT_DIR/README.md"
+RECORD_SHAPE_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-record-shape-validation.md"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
   printf '%s\n' "CHANGES.md must document repository maintenance." >&2
@@ -14,6 +15,16 @@ fi
 
 if ! grep -Fq "API React Example Changes" "$ROOT_DIR/CHANGES.md"; then
   printf '%s\n' "CHANGES.md must identify the project." >&2
+  exit 1
+fi
+
+if [ ! -f "$RECORD_SHAPE_PLAN" ]; then
+  printf '%s\n' "Photo record shape validation plan is missing." >&2
+  exit 1
+fi
+
+if ! grep -Fq "Status: Completed" "$RECORD_SHAPE_PLAN" || ! grep -Fq "make check" "$RECORD_SHAPE_PLAN"; then
+  printf '%s\n' "Photo record shape validation plan must record completed status and make check verification." >&2
   exit 1
 fi
 
@@ -82,6 +93,26 @@ if ! grep -Fq "photos.slice(0, MAX_PHOTOS)" "$PHOTOS"; then
   exit 1
 fi
 
+if ! grep -Fq "function isRenderablePhoto" "$PHOTOS"; then
+  printf '%s\n' "Photos component must validate photo item shape before rendering." >&2
+  exit 1
+fi
+
+if ! grep -Fq "photo.id !== null" "$PHOTOS" || ! grep -Fq "photo.id !== undefined" "$PHOTOS"; then
+  printf '%s\n' "Photos component must require photo ids before rendering." >&2
+  exit 1
+fi
+
+if ! grep -Fq "hasText(photo.title)" "$PHOTOS" || ! grep -Fq "hasText(photo.thumbnailUrl)" "$PHOTOS"; then
+  printf '%s\n' "Photos component must require title and thumbnail URL text before rendering." >&2
+  exit 1
+fi
+
+if ! grep -Fq "if (!photos.every(isRenderablePhoto))" "$PHOTOS"; then
+  printf '%s\n' "Photos component must validate every API photo before applying the render limit." >&2
+  exit 1
+fi
+
 if ! grep -Fq "mockFetchSuccess" "$APP_TEST"; then
   printf '%s\n' "Tests must mock fetch success without network access." >&2
   exit 1
@@ -94,6 +125,16 @@ fi
 
 if ! grep -Fq "photo response is not an array" "$APP_TEST"; then
   printf '%s\n' "Tests must cover non-array photo responses." >&2
+  exit 1
+fi
+
+if ! grep -Fq "photo item is missing render fields" "$APP_TEST"; then
+  printf '%s\n' "Tests must cover malformed photo item responses." >&2
+  exit 1
+fi
+
+if ! grep -Fq "malformed photo is beyond the render limit" "$APP_TEST"; then
+  printf '%s\n' "Tests must cover malformed photos beyond the display limit." >&2
   exit 1
 fi
 

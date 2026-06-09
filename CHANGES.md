@@ -1,5 +1,12 @@
 # API React Example Changes
 
+## 2026-06-09
+
+- Added photo item shape validation so malformed records use the existing error
+  state instead of rendering broken cards.
+- Added Jest and source-baseline coverage for missing photo render fields.
+- Documented the photo record rendering contract in the README and vision.
+
 ## 2026-06-08
 
 - Added `make check` as the root wrapper for the React source baseline, lint,

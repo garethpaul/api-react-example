@@ -20,12 +20,13 @@ Priority:
 - Preserve the `Photos` component as the central API example
 - Keep `yarn start`, `yarn test`, and `yarn build` usable
 - Make network assumptions visible instead of hidden in component code
+- Validate API item shape before rendering photo cards
 - Keep the app small enough for beginners to inspect
 
 Next priorities:
 
-- Update tests so they assert the actual photo-list behavior
-- Replace deprecated lifecycle usage with modern React patterns
+- Keep tests aligned with the actual photo-list behavior
+- Consider modern React patterns in a dedicated refactor
 - Move API configuration and error handling into clearer boundaries
 - Keep dependencies current enough to install on supported Node versions
 

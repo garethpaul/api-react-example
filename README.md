@@ -86,6 +86,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 
 ## Maintenance Notes
 
+- Photo records are validated before rendering; malformed items use the existing
+  error state instead of creating broken cards.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
 - See `docs/plans/2026-06-08-api-react-example-check-wrapper.md` for the root
   verification wrapper baseline.

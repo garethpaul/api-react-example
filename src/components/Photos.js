@@ -3,9 +3,28 @@ import React from 'react';
 export const PHOTO_ENDPOINT = 'https://jsonplaceholder.typicode.com/photos';
 export const MAX_PHOTOS = 12;
 
+function hasText(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+export function isRenderablePhoto(photo) {
+  return (
+    Boolean(photo) &&
+    typeof photo === 'object' &&
+    photo.id !== null &&
+    photo.id !== undefined &&
+    hasText(photo.title) &&
+    hasText(photo.thumbnailUrl)
+  );
+}
+
 export function normalizePhotos(photos) {
   if (!Array.isArray(photos)) {
     throw new Error('Photo response must be an array.');
+  }
+
+  if (!photos.every(isRenderablePhoto)) {
+    throw new Error('Photo records must include id, title, and thumbnailUrl.');
   }
 
   return photos.slice(0, MAX_PHOTOS);

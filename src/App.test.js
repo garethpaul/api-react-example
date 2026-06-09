@@ -86,6 +86,34 @@ test('renders an error state when the photo response is not an array', async () 
   );
 });
 
+test('renders an error state when a photo item is missing render fields', async () => {
+  mockFetchSuccess([{ id: 1, title: 'Missing thumbnail' }]);
+
+  render(<Photos />);
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Unable to load photos.'
+  );
+  expect(screen.queryByText('Missing thumbnail')).not.toBeInTheDocument();
+});
+
+test('renders an error state when a malformed photo is beyond the render limit', async () => {
+  const manyPhotos = Array.from({ length: MAX_PHOTOS + 1 }, (_, index) => ({
+    id: index + 1,
+    title: `Photo ${index + 1}`,
+    thumbnailUrl: `https://example.com/${index + 1}.jpg`,
+  }));
+  delete manyPhotos[MAX_PHOTOS].thumbnailUrl;
+  mockFetchSuccess(manyPhotos);
+
+  render(<Photos />);
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Unable to load photos.'
+  );
+  expect(screen.queryByText('Photo 1')).not.toBeInTheDocument();
+});
+
 test('limits rendered photos from large API responses', async () => {
   const manyPhotos = Array.from({ length: MAX_PHOTOS + 1 }, (_, index) => ({
     id: index + 1,
