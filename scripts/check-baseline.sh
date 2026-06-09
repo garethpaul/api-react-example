@@ -13,6 +13,7 @@ DUPLICATE_ID_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-duplicate-id-validation
 UNMOUNT_GUARD_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-unmount-state-guard.md"
 PHOTO_ID_TYPE_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-id-type-validation.md"
 THUMBNAIL_CREDENTIAL_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-thumbnail-credential-validation.md"
+PHOTO_ABORT_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-fetch-abort-guard.md"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
   printf '%s\n' "CHANGES.md must document repository maintenance." >&2
@@ -121,6 +122,16 @@ fi
 
 if ! grep -Fq "isActive = false" "$PHOTOS" || ! grep -Fq "setPhotosState(nextState)" "$PHOTOS"; then
   printf '%s\n' "Photos component must centralize mounted-state checks before setState." >&2
+  exit 1
+fi
+
+if ! grep -Fq "abortController = null" "$PHOTOS" || ! grep -Fq "this.abortController.abort()" "$PHOTOS"; then
+  printf '%s\n' "Photos component must abort pending photo fetches during unmount." >&2
+  exit 1
+fi
+
+if ! grep -Fq "new AbortController()" "$PHOTOS" || ! grep -Fq "fetch(PHOTO_ENDPOINT, requestOptions)" "$PHOTOS"; then
+  printf '%s\n' "Photos component must pass an abort signal to photo fetch when supported." >&2
   exit 1
 fi
 
@@ -294,6 +305,11 @@ if ! grep -Fq "does not update state after unmounting during photo load" "$APP_T
   exit 1
 fi
 
+if ! grep -Fq "aborts pending photo fetch after unmount" "$APP_TEST"; then
+  printf '%s\n' "Tests must cover aborting pending photo fetches after unmount." >&2
+  exit 1
+fi
+
 if ! grep -Fq "photo thumbnail URL is not HTTPS" "$APP_TEST"; then
   printf '%s\n' "Tests must cover insecure thumbnail URL responses." >&2
   exit 1
@@ -374,6 +390,11 @@ if ! grep -Fq "Thumbnail URLs with embedded credentials are rejected" "$README";
   exit 1
 fi
 
+if ! grep -Fq "Pending photo loads are aborted when the component unmounts" "$README"; then
+  printf '%s\n' "README must document pending photo fetch abort handling." >&2
+  exit 1
+fi
+
 if ! grep -Fq "CHANGES.md" "$README"; then
   printf '%s\n' "README must point to CHANGES.md." >&2
   exit 1
@@ -391,6 +412,16 @@ fi
 
 if ! grep -Fq "status: completed" "$THUMBNAIL_CREDENTIAL_PLAN" || ! grep -Fq "make check" "$THUMBNAIL_CREDENTIAL_PLAN"; then
   printf '%s\n' "Photo thumbnail credential validation plan must record completed status and make check verification." >&2
+  exit 1
+fi
+
+if [ ! -f "$PHOTO_ABORT_PLAN" ]; then
+  printf '%s\n' "Photo fetch abort guard plan is missing." >&2
+  exit 1
+fi
+
+if ! grep -Fq "status: completed" "$PHOTO_ABORT_PLAN" || ! grep -Fq "make check" "$PHOTO_ABORT_PLAN"; then
+  printf '%s\n' "Photo fetch abort guard plan must record completed status and make check verification." >&2
   exit 1
 fi
 

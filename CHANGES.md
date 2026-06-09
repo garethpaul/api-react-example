@@ -2,6 +2,8 @@
 
 ## 2026-06-09
 
+- Aborted pending photo fetches on component unmount when `AbortController` is
+  available.
 - Rejected credential-bearing HTTPS thumbnail URLs before rendering photo cards.
 - Required API photo IDs to be non-empty strings or finite numbers before
   normalizing them for React keys.

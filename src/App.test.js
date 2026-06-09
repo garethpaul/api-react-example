@@ -15,6 +15,7 @@ const photos = [
     thumbnailUrl: 'https://example.com/second.jpg',
   },
 ];
+const originalAbortController = global.AbortController;
 
 function mockFetchSuccess(data = photos) {
   global.fetch = jest.fn().mockResolvedValue({
@@ -26,6 +27,7 @@ function mockFetchSuccess(data = photos) {
 afterEach(() => {
   jest.restoreAllMocks();
   delete global.fetch;
+  global.AbortController = originalAbortController;
 });
 
 test('renders the photo list heading from the app shell', async () => {
@@ -45,7 +47,14 @@ test('loads and renders photos from the placeholder API', async () => {
   render(<Photos />);
 
   expect(screen.getByRole('status')).toHaveTextContent('Loading photos...');
-  expect(global.fetch).toHaveBeenCalledWith(PHOTO_ENDPOINT);
+  if (global.AbortController) {
+    expect(global.fetch).toHaveBeenCalledWith(
+      PHOTO_ENDPOINT,
+      expect.objectContaining({ signal: expect.any(Object) })
+    );
+  } else {
+    expect(global.fetch).toHaveBeenCalledWith(PHOTO_ENDPOINT);
+  }
   expect(await screen.findByText('First photo')).toBeInTheDocument();
   expect(screen.getByAltText('Second photo')).toHaveAttribute(
     'src',
@@ -100,6 +109,21 @@ test('does not update state after unmounting during photo load', async () => {
   });
 
   expect(setStateSpy).not.toHaveBeenCalled();
+});
+
+test('aborts pending photo fetch after unmount', () => {
+  const abort = jest.fn();
+  const signal = {};
+  global.AbortController = jest.fn(() => ({ abort, signal }));
+  global.fetch = jest.fn(() => new Promise(() => {}));
+
+  const { unmount } = render(<Photos />);
+
+  expect(global.fetch).toHaveBeenCalledWith(PHOTO_ENDPOINT, { signal });
+
+  unmount();
+
+  expect(abort).toHaveBeenCalledTimes(1);
 });
 
 test('renders an error state when the photo response is not an array', async () => {

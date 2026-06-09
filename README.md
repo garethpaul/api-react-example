@@ -97,6 +97,10 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - Photo IDs must be non-empty strings or finite numbers and are normalized
   before React keys are rendered.
 - Pending photo loads skip state updates after the component unmounts.
+- Pending photo loads are aborted when the component unmounts on browsers that
+  support `AbortController`.
+- See `docs/plans/2026-06-09-photo-fetch-abort-guard.md` for the pending photo
+  fetch abort guard.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
 - See `docs/plans/2026-06-08-api-react-example-check-wrapper.md` for the root
   verification wrapper baseline.

@@ -102,6 +102,7 @@ class Photos extends React.Component {
   };
 
   isActive = false;
+  abortController = null;
 
   componentDidMount() {
     this.isActive = true;
@@ -110,6 +111,9 @@ class Photos extends React.Component {
 
   componentWillUnmount() {
     this.isActive = false;
+    if (this.abortController) {
+      this.abortController.abort();
+    }
   }
 
   setPhotosState(nextState) {
@@ -118,9 +122,21 @@ class Photos extends React.Component {
     }
   }
 
+  createPhotoRequestOptions() {
+    if (typeof AbortController === 'undefined') {
+      return null;
+    }
+
+    this.abortController = new AbortController();
+    return { signal: this.abortController.signal };
+  }
+
   async loadPhotos() {
     try {
-      const response = await fetch(PHOTO_ENDPOINT);
+      const requestOptions = this.createPhotoRequestOptions();
+      const response = requestOptions
+        ? await fetch(PHOTO_ENDPOINT, requestOptions)
+        : await fetch(PHOTO_ENDPOINT);
       if (!response.ok) {
         throw new Error(`Photo request failed with ${response.status}`);
       }
@@ -133,6 +149,8 @@ class Photos extends React.Component {
         loading: false,
         error: 'Unable to load photos.',
       });
+    } finally {
+      this.abortController = null;
     }
   }
 

@@ -27,6 +27,7 @@ Priority:
 - Reject duplicate API photo IDs before React key rendering
 - Require photo IDs to be key-safe string or finite number values
 - Avoid state updates from pending API loads after unmount
+- Abort pending photo loads after unmount when the browser supports it
 - Keep the app small enough for beginners to inspect
 
 Next priorities:
