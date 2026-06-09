@@ -47,6 +47,20 @@ function normalizePhoto(photo) {
   };
 }
 
+function hasUniquePhotoIds(photos) {
+  const seenIds = new Set();
+
+  return photos.every((photo) => {
+    const key = String(photo.id);
+    if (seenIds.has(key)) {
+      return false;
+    }
+
+    seenIds.add(key);
+    return true;
+  });
+}
+
 export function normalizePhotos(photos) {
   if (!Array.isArray(photos)) {
     throw new Error('Photo response must be an array.');
@@ -54,6 +68,10 @@ export function normalizePhotos(photos) {
 
   if (!photos.every(isRenderablePhoto)) {
     throw new Error('Photo records must include id, title, and thumbnailUrl.');
+  }
+
+  if (!hasUniquePhotoIds(photos)) {
+    throw new Error('Photo records must have unique ids.');
   }
 
   return photos.map(normalizePhoto).slice(0, MAX_PHOTOS);

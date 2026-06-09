@@ -97,6 +97,29 @@ test('renders an error state when a photo item is missing render fields', async 
   expect(screen.queryByText('Missing thumbnail')).not.toBeInTheDocument();
 });
 
+test('renders an error state when photo ids are duplicated', async () => {
+  mockFetchSuccess([
+    {
+      id: 1,
+      title: 'First duplicate',
+      thumbnailUrl: 'https://example.com/first.jpg',
+    },
+    {
+      id: '1',
+      title: 'Second duplicate',
+      thumbnailUrl: 'https://example.com/second.jpg',
+    },
+  ]);
+
+  render(<Photos />);
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Unable to load photos.'
+  );
+  expect(screen.queryByText('First duplicate')).not.toBeInTheDocument();
+  expect(screen.queryByText('Second duplicate')).not.toBeInTheDocument();
+});
+
 test('renders an error state when a photo thumbnail URL is not HTTPS', async () => {
   mockFetchSuccess([
     {

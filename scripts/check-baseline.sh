@@ -9,6 +9,7 @@ README="$ROOT_DIR/README.md"
 RECORD_SHAPE_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-record-shape-validation.md"
 THUMBNAIL_URL_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-thumbnail-url-validation.md"
 RENDER_FIELD_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-render-field-normalization.md"
+DUPLICATE_ID_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-duplicate-id-validation.md"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
   printf '%s\n' "CHANGES.md must document repository maintenance." >&2
@@ -47,6 +48,16 @@ fi
 
 if ! grep -Fq "Status: Completed" "$RENDER_FIELD_PLAN" || ! grep -Fq "make check" "$RENDER_FIELD_PLAN"; then
   printf '%s\n' "Photo render field normalization plan must record completed status and make check verification." >&2
+  exit 1
+fi
+
+if [ ! -f "$DUPLICATE_ID_PLAN" ]; then
+  printf '%s\n' "Photo duplicate id validation plan is missing." >&2
+  exit 1
+fi
+
+if ! grep -Fq "Status: Completed" "$DUPLICATE_ID_PLAN" || ! grep -Fq "make check" "$DUPLICATE_ID_PLAN"; then
+  printf '%s\n' "Photo duplicate id validation plan must record completed status and make check verification." >&2
   exit 1
 fi
 
@@ -175,6 +186,16 @@ if ! grep -Fq "photos.map(normalizePhoto).slice(0, MAX_PHOTOS)" "$PHOTOS"; then
   exit 1
 fi
 
+if ! grep -Fq "function hasUniquePhotoIds" "$PHOTOS"; then
+  printf '%s\n' "Photos component must guard duplicate photo ids before rendering." >&2
+  exit 1
+fi
+
+if ! grep -Fq "String(photo.id)" "$PHOTOS" || ! grep -Fq "!hasUniquePhotoIds(photos)" "$PHOTOS"; then
+  printf '%s\n' "Photos component must compare React key-compatible photo ids before rendering." >&2
+  exit 1
+fi
+
 if ! grep -Fq "mockFetchSuccess" "$APP_TEST"; then
   printf '%s\n' "Tests must mock fetch success without network access." >&2
   exit 1
@@ -192,6 +213,11 @@ fi
 
 if ! grep -Fq "photo item is missing render fields" "$APP_TEST"; then
   printf '%s\n' "Tests must cover malformed photo item responses." >&2
+  exit 1
+fi
+
+if ! grep -Fq "photo ids are duplicated" "$APP_TEST"; then
+  printf '%s\n' "Tests must cover duplicate photo id responses." >&2
   exit 1
 fi
 

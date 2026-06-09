@@ -91,6 +91,7 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - Thumbnail URLs must parse as HTTPS URLs before the app renders image elements.
 - Accepted photo titles and thumbnail URLs are normalized before they are used
   in headings, alt text, and image sources.
+- Photo IDs must be unique after React key coercion before cards are rendered.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
 - See `docs/plans/2026-06-08-api-react-example-check-wrapper.md` for the root
   verification wrapper baseline.
@@ -98,6 +99,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   thumbnail validation baseline.
 - See `docs/plans/2026-06-09-photo-render-field-normalization.md` for the render
   field normalization baseline.
+- See `docs/plans/2026-06-09-photo-duplicate-id-validation.md` for the duplicate
+  photo ID validation baseline.
 - See `VISION.md` for project direction and contribution guardrails.
 - See `CHANGES.md` for the maintenance history.
 

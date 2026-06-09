@@ -2,6 +2,8 @@
 
 ## 2026-06-09
 
+- Rejected duplicate API photo IDs before rendering so React keys remain stable
+  and repeated records use the existing error state.
 - Normalized accepted photo render fields so titles are trimmed and thumbnail
   URLs are canonicalized before they reach headings, alt text, and image srcs.
 - Required photo thumbnail URLs to parse as HTTPS before rendering, with Jest

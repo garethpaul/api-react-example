@@ -23,6 +23,7 @@ Priority:
 - Validate API item shape before rendering photo cards
 - Render only HTTPS thumbnail URLs from the API response
 - Normalize accepted API fields before using them in visible photo cards
+- Reject duplicate API photo IDs before React key rendering
 - Keep the app small enough for beginners to inspect
 
 Next priorities:
