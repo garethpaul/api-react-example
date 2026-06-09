@@ -84,8 +84,21 @@ class Photos extends React.Component {
     error: null,
   };
 
+  isActive = false;
+
   componentDidMount() {
+    this.isActive = true;
     this.loadPhotos();
+  }
+
+  componentWillUnmount() {
+    this.isActive = false;
+  }
+
+  setPhotosState(nextState) {
+    if (this.isActive) {
+      this.setState(nextState);
+    }
   }
 
   async loadPhotos() {
@@ -96,9 +109,9 @@ class Photos extends React.Component {
       }
 
       const photos = normalizePhotos(await response.json());
-      this.setState({ photos, loading: false, error: null });
+      this.setPhotosState({ photos, loading: false, error: null });
     } catch (error) {
-      this.setState({
+      this.setPhotosState({
         photos: [],
         loading: false,
         error: 'Unable to load photos.',

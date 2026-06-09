@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import App from './App';
 import Photos, { MAX_PHOTOS, PHOTO_ENDPOINT } from './components/Photos';
 
@@ -74,6 +74,32 @@ test('renders an error state when the photo request is not ok', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent(
     'Unable to load photos.'
   );
+});
+
+test('does not update state after unmounting during photo load', async () => {
+  let resolveJson;
+  const json = jest.fn(
+    () =>
+      new Promise((resolve) => {
+        resolveJson = resolve;
+      })
+  );
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    json,
+  });
+  const setStateSpy = jest.spyOn(Photos.prototype, 'setState');
+
+  const { unmount } = render(<Photos />);
+
+  await waitFor(() => expect(json).toHaveBeenCalled());
+  unmount();
+
+  await act(async () => {
+    resolveJson(photos);
+  });
+
+  expect(setStateSpy).not.toHaveBeenCalled();
 });
 
 test('renders an error state when the photo response is not an array', async () => {

@@ -10,6 +10,7 @@ RECORD_SHAPE_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-record-shape-validation
 THUMBNAIL_URL_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-thumbnail-url-validation.md"
 RENDER_FIELD_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-render-field-normalization.md"
 DUPLICATE_ID_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-duplicate-id-validation.md"
+UNMOUNT_GUARD_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-unmount-state-guard.md"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
   printf '%s\n' "CHANGES.md must document repository maintenance." >&2
@@ -61,6 +62,16 @@ if ! grep -Fq "Status: Completed" "$DUPLICATE_ID_PLAN" || ! grep -Fq "make check
   exit 1
 fi
 
+if [ ! -f "$UNMOUNT_GUARD_PLAN" ]; then
+  printf '%s\n' "Photo unmount state guard plan is missing." >&2
+  exit 1
+fi
+
+if ! grep -Fq "Status: Completed" "$UNMOUNT_GUARD_PLAN" || ! grep -Fq "make check" "$UNMOUNT_GUARD_PLAN"; then
+  printf '%s\n' "Photo unmount state guard plan must record completed status and make check verification." >&2
+  exit 1
+fi
+
 if [ -f "$ROOT_DIR/package-lock.json" ]; then
   printf '%s\n' "Yarn is the lockfile source of truth; package-lock.json must not be present." >&2
   exit 1
@@ -88,6 +99,16 @@ fi
 
 if ! grep -Fq "componentDidMount()" "$PHOTOS"; then
   printf '%s\n' "Photo loading must use componentDidMount instead of deprecated lifecycle hooks." >&2
+  exit 1
+fi
+
+if ! grep -Fq "componentWillUnmount()" "$PHOTOS"; then
+  printf '%s\n' "Photo loading must guard async state updates after unmount." >&2
+  exit 1
+fi
+
+if ! grep -Fq "isActive = false" "$PHOTOS" || ! grep -Fq "setPhotosState(nextState)" "$PHOTOS"; then
+  printf '%s\n' "Photos component must centralize mounted-state checks before setState." >&2
   exit 1
 fi
 
@@ -218,6 +239,11 @@ fi
 
 if ! grep -Fq "photo ids are duplicated" "$APP_TEST"; then
   printf '%s\n' "Tests must cover duplicate photo id responses." >&2
+  exit 1
+fi
+
+if ! grep -Fq "does not update state after unmounting during photo load" "$APP_TEST"; then
+  printf '%s\n' "Tests must cover async photo loading after component unmount." >&2
   exit 1
 fi
 

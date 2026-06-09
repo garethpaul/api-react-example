@@ -2,6 +2,8 @@
 
 ## 2026-06-09
 
+- Added an unmount guard around pending photo loads so late API responses do
+  not call `setState` after the component has left the tree.
 - Rejected duplicate API photo IDs before rendering so React keys remain stable
   and repeated records use the existing error state.
 - Normalized accepted photo render fields so titles are trimmed and thumbnail
