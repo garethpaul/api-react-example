@@ -12,6 +12,7 @@ RENDER_FIELD_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-render-field-normalizat
 DUPLICATE_ID_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-duplicate-id-validation.md"
 UNMOUNT_GUARD_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-unmount-state-guard.md"
 PHOTO_ID_TYPE_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-id-type-validation.md"
+THUMBNAIL_CREDENTIAL_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-thumbnail-credential-validation.md"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
   printf '%s\n' "CHANGES.md must document repository maintenance." >&2
@@ -203,6 +204,11 @@ if ! grep -Fq "new URL(value)" "$PHOTOS" || ! grep -Fq "protocol !== 'https:'" "
   exit 1
 fi
 
+if ! grep -Fq "url.username || url.password" "$PHOTOS"; then
+  printf '%s\n' "Photos component must reject thumbnail URLs with embedded credentials." >&2
+  exit 1
+fi
+
 if ! grep -Fq "isHttpsUrl(photo.thumbnailUrl)" "$PHOTOS"; then
   printf '%s\n' "Photos component must use HTTPS URL validation for thumbnails." >&2
   exit 1
@@ -293,6 +299,11 @@ if ! grep -Fq "photo thumbnail URL is not HTTPS" "$APP_TEST"; then
   exit 1
 fi
 
+if ! grep -Fq "photo thumbnail URL includes credentials" "$APP_TEST"; then
+  printf '%s\n' "Tests must cover credentialed thumbnail URL responses." >&2
+  exit 1
+fi
+
 if ! grep -Fq "trims photo titles and normalizes thumbnail URLs before rendering" "$APP_TEST"; then
   printf '%s\n' "Tests must cover accepted photo render field normalization." >&2
   exit 1
@@ -358,6 +369,11 @@ if ! grep -Fq "Photo IDs must be non-empty strings or finite numbers" "$README";
   exit 1
 fi
 
+if ! grep -Fq "Thumbnail URLs with embedded credentials are rejected" "$README"; then
+  printf '%s\n' "README must document credentialed thumbnail URL rejection." >&2
+  exit 1
+fi
+
 if ! grep -Fq "CHANGES.md" "$README"; then
   printf '%s\n' "README must point to CHANGES.md." >&2
   exit 1
@@ -365,6 +381,16 @@ fi
 
 if ! grep -Fq "sh scripts/check-baseline.sh" "$PACKAGE_JSON"; then
   printf '%s\n' "package.json verify script must run the baseline check." >&2
+  exit 1
+fi
+
+if [ ! -f "$THUMBNAIL_CREDENTIAL_PLAN" ]; then
+  printf '%s\n' "Photo thumbnail credential validation plan is missing." >&2
+  exit 1
+fi
+
+if ! grep -Fq "status: completed" "$THUMBNAIL_CREDENTIAL_PLAN" || ! grep -Fq "make check" "$THUMBNAIL_CREDENTIAL_PLAN"; then
+  printf '%s\n' "Photo thumbnail credential validation plan must record completed status and make check verification." >&2
   exit 1
 fi
 

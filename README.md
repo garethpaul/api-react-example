@@ -89,6 +89,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - Photo records are validated before rendering; malformed items use the existing
   error state instead of creating broken cards.
 - Thumbnail URLs must parse as HTTPS URLs before the app renders image elements.
+- Thumbnail URLs with embedded credentials are rejected before image elements
+  are rendered.
 - Accepted photo titles and thumbnail URLs are normalized before they are used
   in headings, alt text, and image sources.
 - Photo IDs must be unique after React key coercion before cards are rendered.
@@ -100,6 +102,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   verification wrapper baseline.
 - See `docs/plans/2026-06-09-photo-thumbnail-url-validation.md` for the HTTPS
   thumbnail validation baseline.
+- See `docs/plans/2026-06-09-photo-thumbnail-credential-validation.md` for the
+  thumbnail credential validation baseline.
 - See `docs/plans/2026-06-09-photo-render-field-normalization.md` for the render
   field normalization baseline.
 - See `docs/plans/2026-06-09-photo-duplicate-id-validation.md` for the duplicate

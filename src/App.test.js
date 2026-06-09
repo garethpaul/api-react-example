@@ -180,6 +180,23 @@ test('renders an error state when a photo thumbnail URL is not HTTPS', async () 
   expect(screen.queryByText('Insecure thumbnail')).not.toBeInTheDocument();
 });
 
+test('renders an error state when a photo thumbnail URL includes credentials', async () => {
+  mockFetchSuccess([
+    {
+      id: 1,
+      title: 'Credentialed thumbnail',
+      thumbnailUrl: 'https://user:pass@example.com/credentialed.jpg',
+    },
+  ]);
+
+  render(<Photos />);
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Unable to load photos.'
+  );
+  expect(screen.queryByText('Credentialed thumbnail')).not.toBeInTheDocument();
+});
+
 test('trims photo titles and normalizes thumbnail URLs before rendering', async () => {
   mockFetchSuccess([
     {
