@@ -28,6 +28,7 @@ Priority:
 - Require photo IDs to be key-safe string or finite number values
 - Avoid state updates from pending API loads after unmount
 - Abort pending photo loads after unmount when the browser supports it
+- Bound photo requests so stalled endpoints cannot leave the UI loading forever
 - Keep the app small enough for beginners to inspect
 
 Next priorities:

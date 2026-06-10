@@ -2,6 +2,7 @@ import React from 'react';
 
 export const PHOTO_ENDPOINT = 'https://jsonplaceholder.typicode.com/photos';
 export const MAX_PHOTOS = 12;
+export const PHOTO_REQUEST_TIMEOUT_MS = 10000;
 
 function hasText(value) {
   return typeof value === 'string' && value.trim().length > 0;
@@ -102,6 +103,7 @@ class Photos extends React.Component {
 
   isActive = false;
   abortController = null;
+  requestTimeoutId = null;
 
   componentDidMount() {
     this.isActive = true;
@@ -110,8 +112,10 @@ class Photos extends React.Component {
 
   componentWillUnmount() {
     this.isActive = false;
+    this.clearPhotoRequestTimeout();
     if (this.abortController) {
       this.abortController.abort();
+      this.abortController = null;
     }
   }
 
@@ -130,17 +134,44 @@ class Photos extends React.Component {
     return { signal: this.abortController.signal };
   }
 
+  createPhotoRequestTimeout() {
+    return new Promise((_, reject) => {
+      this.requestTimeoutId = setTimeout(() => {
+        this.requestTimeoutId = null;
+        if (this.abortController) {
+          this.abortController.abort();
+        }
+        reject(new Error('Photo request timed out.'));
+      }, PHOTO_REQUEST_TIMEOUT_MS);
+    });
+  }
+
+  clearPhotoRequestTimeout() {
+    if (this.requestTimeoutId !== null) {
+      clearTimeout(this.requestTimeoutId);
+      this.requestTimeoutId = null;
+    }
+  }
+
+  async fetchPhotos(requestOptions) {
+    const response = requestOptions
+      ? await fetch(PHOTO_ENDPOINT, requestOptions)
+      : await fetch(PHOTO_ENDPOINT);
+    if (!response.ok) {
+      throw new Error(`Photo request failed with ${response.status}`);
+    }
+
+    return normalizePhotos(await response.json());
+  }
+
   async loadPhotos() {
     try {
       const requestOptions = this.createPhotoRequestOptions();
-      const response = requestOptions
-        ? await fetch(PHOTO_ENDPOINT, requestOptions)
-        : await fetch(PHOTO_ENDPOINT);
-      if (!response.ok) {
-        throw new Error(`Photo request failed with ${response.status}`);
-      }
-
-      const photos = normalizePhotos(await response.json());
+      const photoRequest = this.fetchPhotos(requestOptions);
+      const photos = await Promise.race([
+        photoRequest,
+        this.createPhotoRequestTimeout(),
+      ]);
       this.setPhotosState({ photos, loading: false, error: null });
     } catch {
       this.setPhotosState({
@@ -149,6 +180,7 @@ class Photos extends React.Component {
         error: 'Unable to load photos.',
       });
     } finally {
+      this.clearPhotoRequestTimeout();
       this.abortController = null;
     }
   }

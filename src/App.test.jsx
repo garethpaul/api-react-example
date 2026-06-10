@@ -1,7 +1,11 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
 import App from './App';
-import Photos, { MAX_PHOTOS, PHOTO_ENDPOINT } from './components/Photos';
+import Photos, {
+  MAX_PHOTOS,
+  PHOTO_ENDPOINT,
+  PHOTO_REQUEST_TIMEOUT_MS,
+} from './components/Photos';
 
 const photos = [
   {
@@ -28,6 +32,7 @@ afterEach(() => {
   vi.restoreAllMocks();
   delete global.fetch;
   global.AbortController = originalAbortController;
+  vi.useRealTimers();
 });
 
 test('renders the photo list heading from the app shell', async () => {
@@ -127,6 +132,43 @@ test('aborts pending photo fetch after unmount', () => {
   unmount();
 
   expect(abort).toHaveBeenCalledTimes(1);
+});
+
+test('aborts and renders an error when the photo request times out', async () => {
+  vi.useFakeTimers();
+  const abort = vi.fn();
+  const signal = {};
+  global.AbortController = vi.fn(function MockAbortController() {
+    this.abort = abort;
+    this.signal = signal;
+  });
+  global.fetch = vi.fn(() => new Promise(() => {}));
+
+  render(<Photos />);
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(PHOTO_REQUEST_TIMEOUT_MS);
+  });
+
+  expect(abort).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole('alert')).toHaveTextContent('Unable to load photos.');
+});
+
+test('times out while parsing photos without abort support', async () => {
+  vi.useFakeTimers();
+  global.AbortController = undefined;
+  global.fetch = vi.fn().mockResolvedValue({
+    ok: true,
+    json: vi.fn(() => new Promise(() => {})),
+  });
+
+  render(<Photos />);
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(PHOTO_REQUEST_TIMEOUT_MS);
+  });
+
+  expect(screen.getByRole('alert')).toHaveTextContent('Unable to load photos.');
 });
 
 test('renders an error state when the photo response is not an array', async () => {

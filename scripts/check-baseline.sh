@@ -15,6 +15,7 @@ PHOTO_ID_TYPE_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-id-type-validation.md"
 THUMBNAIL_CREDENTIAL_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-thumbnail-credential-validation.md"
 PHOTO_ABORT_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-fetch-abort-guard.md"
 TOOLCHAIN_PLAN="$ROOT_DIR/docs/plans/2026-06-10-vite-toolchain-migration.md"
+PHOTO_TIMEOUT_PLAN="$ROOT_DIR/docs/plans/2026-06-10-photo-request-timeout.md"
 WORKFLOW="$ROOT_DIR/.github/workflows/check.yml"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
@@ -152,6 +153,8 @@ fi
 for workflow_contract in \
   "permissions:" \
   "contents: read" \
+  "runs-on: ubuntu-24.04" \
+  "cancel-in-progress: true" \
   "timeout-minutes: 10" \
   "actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10" \
   "actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e" \
@@ -165,6 +168,16 @@ for workflow_contract in \
     exit 1
   fi
 done
+
+if ! grep -Fq 'ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))' "$ROOT_DIR/Makefile"; then
+  printf '%s\n' "Makefile checks must be location-independent." >&2
+  exit 1
+fi
+
+if ! grep -Fq 'cd $(ROOT) &&' "$ROOT_DIR/Makefile"; then
+  printf '%s\n' "Makefile commands must execute from the repository root." >&2
+  exit 1
+fi
 
 if ! grep -Fq 'PHOTO_ENDPOINT = '\''https://jsonplaceholder.typicode.com/photos'\''' "$PHOTOS"; then
   printf '%s\n' "Photo endpoint must stay on HTTPS JSONPlaceholder." >&2
@@ -193,6 +206,39 @@ fi
 
 if ! grep -Fq "new AbortController()" "$PHOTOS" || ! grep -Fq "fetch(PHOTO_ENDPOINT, requestOptions)" "$PHOTOS"; then
   printf '%s\n' "Photos component must pass an abort signal to photo fetch when supported." >&2
+  exit 1
+fi
+
+for timeout_contract in \
+  "PHOTO_REQUEST_TIMEOUT_MS = 10000" \
+  "requestTimeoutId = null" \
+  "createPhotoRequestTimeout()" \
+  "setTimeout(() =>" \
+  "this.abortController.abort()" \
+  "reject(new Error('Photo request timed out.'))" \
+  "Promise.race([" \
+  "async fetchPhotos(requestOptions)" \
+  "const photoRequest = this.fetchPhotos(requestOptions)" \
+  "clearPhotoRequestTimeout()" \
+  "clearTimeout(this.requestTimeoutId)"; do
+  if ! grep -Fq "$timeout_contract" "$PHOTOS"; then
+    printf '%s\n' "Missing photo request timeout contract: $timeout_contract" >&2
+    exit 1
+  fi
+done
+
+if grep -Fq "const photoRequest = await this.fetchPhotos(requestOptions)" "$PHOTOS"; then
+  printf '%s\n' "Photo operation must start without awaiting before the timeout race." >&2
+  exit 1
+fi
+
+if [ "$(grep -Fc 'this.clearPhotoRequestTimeout();' "$PHOTOS")" -lt 2 ]; then
+  printf '%s\n' "Photo timeout cleanup must run after completion and unmount." >&2
+  exit 1
+fi
+
+if [ "$(grep -Fc 'this.abortController.abort();' "$PHOTOS")" -lt 2 ]; then
+  printf '%s\n' "Photo requests must abort at timeout and unmount." >&2
   exit 1
 fi
 
@@ -371,6 +417,18 @@ if ! grep -Fq "aborts pending photo fetch after unmount" "$APP_TEST"; then
   exit 1
 fi
 
+for timeout_test_contract in \
+  "aborts and renders an error when the photo request times out" \
+  "times out while parsing photos without abort support" \
+  "global.AbortController = undefined" \
+  "vi.useFakeTimers()" \
+  "vi.advanceTimersByTimeAsync(PHOTO_REQUEST_TIMEOUT_MS)"; do
+  if ! grep -Fq "$timeout_test_contract" "$APP_TEST"; then
+    printf '%s\n' "Missing photo timeout test contract: $timeout_test_contract" >&2
+    exit 1
+  fi
+done
+
 if ! grep -Fq "photo thumbnail URL is not HTTPS" "$APP_TEST"; then
   printf '%s\n' "Tests must cover insecure thumbnail URL responses." >&2
   exit 1
@@ -471,6 +529,11 @@ if ! grep -Fq "Pending photo loads are aborted when the component unmounts" "$RE
   exit 1
 fi
 
+if ! grep -Fq "Photo requests time out after 10 seconds" "$README"; then
+  printf '%s\n' "README must document the photo request timeout." >&2
+  exit 1
+fi
+
 if ! grep -Fq "CHANGES.md" "$README"; then
   printf '%s\n' "README must point to CHANGES.md." >&2
   exit 1
@@ -498,6 +561,16 @@ fi
 
 if ! grep -Fq "status: completed" "$PHOTO_ABORT_PLAN" || ! grep -Fq "make check" "$PHOTO_ABORT_PLAN"; then
   printf '%s\n' "Photo fetch abort guard plan must record completed status and make check verification." >&2
+  exit 1
+fi
+
+if [ ! -f "$PHOTO_TIMEOUT_PLAN" ]; then
+  printf '%s\n' "Photo request timeout plan is missing." >&2
+  exit 1
+fi
+
+if ! grep -Fq "Status: Completed" "$PHOTO_TIMEOUT_PLAN" || ! grep -Fq "make check" "$PHOTO_TIMEOUT_PLAN"; then
+  printf '%s\n' "Photo request timeout plan must record completed status and verification." >&2
   exit 1
 fi
 
