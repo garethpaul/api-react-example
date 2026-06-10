@@ -102,8 +102,7 @@ class Photos extends React.Component {
   };
 
   isActive = false;
-  abortController = null;
-  requestTimeoutId = null;
+  activeRequest = null;
 
   componentDidMount() {
     this.isActive = true;
@@ -112,44 +111,61 @@ class Photos extends React.Component {
 
   componentWillUnmount() {
     this.isActive = false;
-    this.clearPhotoRequestTimeout();
-    if (this.abortController) {
-      this.abortController.abort();
-      this.abortController = null;
-    }
+    this.cancelActivePhotoRequest();
   }
 
-  setPhotosState(nextState) {
-    if (this.isActive) {
+  setPhotosState(request, nextState) {
+    if (this.isActive && this.activeRequest === request) {
       this.setState(nextState);
     }
   }
 
-  createPhotoRequestOptions() {
-    if (typeof AbortController === 'undefined') {
-      return null;
-    }
-
-    this.abortController = new AbortController();
-    return { signal: this.abortController.signal };
+  createPhotoRequest() {
+    this.cancelActivePhotoRequest();
+    const request = {
+      abortController:
+        typeof AbortController === 'undefined' ? null : new AbortController(),
+      timeoutId: null,
+    };
+    this.activeRequest = request;
+    return request;
   }
 
-  createPhotoRequestTimeout() {
+  createPhotoRequestOptions(request) {
+    return request.abortController
+      ? { signal: request.abortController.signal }
+      : null;
+  }
+
+  createPhotoRequestTimeout(request) {
     return new Promise((_, reject) => {
-      this.requestTimeoutId = setTimeout(() => {
-        this.requestTimeoutId = null;
-        if (this.abortController) {
-          this.abortController.abort();
+      request.timeoutId = setTimeout(() => {
+        request.timeoutId = null;
+        if (request.abortController) {
+          request.abortController.abort();
         }
         reject(new Error('Photo request timed out.'));
       }, PHOTO_REQUEST_TIMEOUT_MS);
     });
   }
 
-  clearPhotoRequestTimeout() {
-    if (this.requestTimeoutId !== null) {
-      clearTimeout(this.requestTimeoutId);
-      this.requestTimeoutId = null;
+  clearPhotoRequestTimeout(request) {
+    if (request.timeoutId !== null) {
+      clearTimeout(request.timeoutId);
+      request.timeoutId = null;
+    }
+  }
+
+  cancelActivePhotoRequest() {
+    const request = this.activeRequest;
+    if (!request) {
+      return;
+    }
+
+    this.activeRequest = null;
+    this.clearPhotoRequestTimeout(request);
+    if (request.abortController) {
+      request.abortController.abort();
     }
   }
 
@@ -165,23 +181,26 @@ class Photos extends React.Component {
   }
 
   async loadPhotos() {
+    const request = this.createPhotoRequest();
     try {
-      const requestOptions = this.createPhotoRequestOptions();
+      const requestOptions = this.createPhotoRequestOptions(request);
       const photoRequest = this.fetchPhotos(requestOptions);
       const photos = await Promise.race([
         photoRequest,
-        this.createPhotoRequestTimeout(),
+        this.createPhotoRequestTimeout(request),
       ]);
-      this.setPhotosState({ photos, loading: false, error: null });
+      this.setPhotosState(request, { photos, loading: false, error: null });
     } catch {
-      this.setPhotosState({
+      this.setPhotosState(request, {
         photos: [],
         loading: false,
         error: 'Unable to load photos.',
       });
     } finally {
-      this.clearPhotoRequestTimeout();
-      this.abortController = null;
+      this.clearPhotoRequestTimeout(request);
+      if (this.activeRequest === request) {
+        this.activeRequest = null;
+      }
     }
   }
 

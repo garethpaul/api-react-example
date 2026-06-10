@@ -134,6 +134,43 @@ test('aborts pending photo fetch after unmount', () => {
   expect(abort).toHaveBeenCalledTimes(1);
 });
 
+test('ignores a superseded request after the same instance remounts', async () => {
+  let rejectFirstRequest;
+  global.fetch = vi
+    .fn()
+    .mockImplementationOnce(
+      () =>
+        new Promise((_, reject) => {
+          rejectFirstRequest = reject;
+        }),
+    )
+    .mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn().mockResolvedValue(photos),
+    });
+  const component = new Photos({});
+  component.setState = vi.fn();
+
+  component.componentDidMount();
+  component.componentWillUnmount();
+  component.componentDidMount();
+
+  await waitFor(() =>
+    expect(component.setState).toHaveBeenCalledWith({
+      photos: photos.map((photo) => ({ ...photo, id: String(photo.id) })),
+      loading: false,
+      error: null,
+    }),
+  );
+
+  await act(async () => {
+    rejectFirstRequest(new Error('superseded request failed'));
+  });
+
+  expect(component.setState).toHaveBeenCalledTimes(1);
+  component.componentWillUnmount();
+});
+
 test('aborts and renders an error when the photo request times out', async () => {
   vi.useFakeTimers();
   const abort = vi.fn();

@@ -4,6 +4,8 @@
 
 - Added a 10-second photo request timeout that aborts when supported, renders
   the existing error state, and clears timers on success or unmount.
+- Scoped photo timers, abort controllers, completion, and cleanup to request
+  identity so a Strict Mode remount cannot let stale work replace current state.
 - Added fake-timer timeout coverage, made Make targets location-independent,
   and pinned CI to Ubuntu 24.04 with superseded-run cancellation.
 - Replaced deprecated Create React App with Vite 8 and Vitest 4.

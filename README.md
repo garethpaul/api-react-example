@@ -107,6 +107,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   support `AbortController`.
 - Photo requests time out after 10 seconds, abort when supported, and leave the
   loading state through the existing user-visible error path.
+- Each photo request owns its timeout and abort controller, and only the active
+  request may update state or clear current request resources after a remount.
 - See `docs/plans/2026-06-09-photo-fetch-abort-guard.md` for the pending photo
   fetch abort guard.
 - See `docs/plans/2026-06-10-photo-request-timeout.md` for the bounded request

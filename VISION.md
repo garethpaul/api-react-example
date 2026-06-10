@@ -29,6 +29,7 @@ Priority:
 - Avoid state updates from pending API loads after unmount
 - Abort pending photo loads after unmount when the browser supports it
 - Bound photo requests so stalled endpoints cannot leave the UI loading forever
+- Keep photo request completion and cleanup owned by the latest mounted request
 - Keep the app small enough for beginners to inspect
 
 Next priorities:

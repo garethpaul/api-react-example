@@ -16,6 +16,7 @@ THUMBNAIL_CREDENTIAL_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-thumbnail-crede
 PHOTO_ABORT_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-fetch-abort-guard.md"
 TOOLCHAIN_PLAN="$ROOT_DIR/docs/plans/2026-06-10-vite-toolchain-migration.md"
 PHOTO_TIMEOUT_PLAN="$ROOT_DIR/docs/plans/2026-06-10-photo-request-timeout.md"
+REQUEST_OWNERSHIP_PLAN="$ROOT_DIR/docs/plans/2026-06-10-photo-request-ownership.md"
 WORKFLOW="$ROOT_DIR/.github/workflows/check.yml"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
@@ -194,12 +195,26 @@ if ! grep -Fq "componentWillUnmount()" "$PHOTOS"; then
   exit 1
 fi
 
-if ! grep -Fq "isActive = false" "$PHOTOS" || ! grep -Fq "setPhotosState(nextState)" "$PHOTOS"; then
+if ! grep -Fq "isActive = false" "$PHOTOS" || \
+   ! grep -Fq "setPhotosState(request, nextState)" "$PHOTOS" || \
+   ! grep -Fq "this.activeRequest === request" "$PHOTOS"; then
   printf '%s\n' "Photos component must centralize mounted-state checks before setState." >&2
   exit 1
 fi
 
-if ! grep -Fq "abortController = null" "$PHOTOS" || ! grep -Fq "this.abortController.abort()" "$PHOTOS"; then
+if ! awk '
+  /setPhotosState\(request, nextState\)/ { in_state_helper = 1 }
+  in_state_helper && /this\.isActive && this\.activeRequest === request/ { found = 1 }
+  in_state_helper && /^  }/ { in_state_helper = 0 }
+  END { exit found ? 0 : 1 }
+' "$PHOTOS"; then
+  printf '%s\n' "Photo state updates must verify active request identity inside setPhotosState." >&2
+  exit 1
+fi
+
+if ! grep -Fq "activeRequest = null" "$PHOTOS" || \
+   ! grep -Fq "request.abortController.abort()" "$PHOTOS" || \
+   ! grep -Fq "cancelActivePhotoRequest()" "$PHOTOS"; then
   printf '%s\n' "Photos component must abort pending photo fetches during unmount." >&2
   exit 1
 fi
@@ -211,16 +226,16 @@ fi
 
 for timeout_contract in \
   "PHOTO_REQUEST_TIMEOUT_MS = 10000" \
-  "requestTimeoutId = null" \
-  "createPhotoRequestTimeout()" \
+  "timeoutId: null" \
+  "createPhotoRequestTimeout(request)" \
   "setTimeout(() =>" \
-  "this.abortController.abort()" \
+  "request.abortController.abort()" \
   "reject(new Error('Photo request timed out.'))" \
   "Promise.race([" \
   "async fetchPhotos(requestOptions)" \
   "const photoRequest = this.fetchPhotos(requestOptions)" \
-  "clearPhotoRequestTimeout()" \
-  "clearTimeout(this.requestTimeoutId)"; do
+  "clearPhotoRequestTimeout(request)" \
+  "clearTimeout(request.timeoutId)"; do
   if ! grep -Fq "$timeout_contract" "$PHOTOS"; then
     printf '%s\n' "Missing photo request timeout contract: $timeout_contract" >&2
     exit 1
@@ -232,15 +247,26 @@ if grep -Fq "const photoRequest = await this.fetchPhotos(requestOptions)" "$PHOT
   exit 1
 fi
 
-if [ "$(grep -Fc 'this.clearPhotoRequestTimeout();' "$PHOTOS")" -lt 2 ]; then
+if [ "$(grep -Fc 'this.clearPhotoRequestTimeout(request);' "$PHOTOS")" -lt 2 ]; then
   printf '%s\n' "Photo timeout cleanup must run after completion and unmount." >&2
   exit 1
 fi
 
-if [ "$(grep -Fc 'this.abortController.abort();' "$PHOTOS")" -lt 2 ]; then
+if [ "$(grep -Fc 'request.abortController.abort();' "$PHOTOS")" -lt 2 ]; then
   printf '%s\n' "Photo requests must abort at timeout and unmount." >&2
   exit 1
 fi
+
+for ownership_contract in \
+  "const request = this.createPhotoRequest()" \
+  "this.activeRequest = request" \
+  "this.setPhotosState(request," \
+  "if (this.activeRequest === request)"; do
+  if ! grep -Fq "$ownership_contract" "$PHOTOS"; then
+    printf '%s\n' "Missing photo request ownership contract: $ownership_contract" >&2
+    exit 1
+  fi
+done
 
 if grep -Fq "componentWillMount" "$PHOTOS"; then
   printf '%s\n' "Deprecated componentWillMount must not be reintroduced." >&2
@@ -417,6 +443,12 @@ if ! grep -Fq "aborts pending photo fetch after unmount" "$APP_TEST"; then
   exit 1
 fi
 
+if ! grep -Fq "ignores a superseded request after the same instance remounts" "$APP_TEST" || \
+   ! grep -Fq "expect(component.setState).toHaveBeenCalledTimes(1)" "$APP_TEST"; then
+  printf '%s\n' "Tests must cover superseded request completion after remount." >&2
+  exit 1
+fi
+
 for timeout_test_contract in \
   "aborts and renders an error when the photo request times out" \
   "times out while parsing photos without abort support" \
@@ -534,6 +566,11 @@ if ! grep -Fq "Photo requests time out after 10 seconds" "$README"; then
   exit 1
 fi
 
+if ! grep -Fq "Each photo request owns its timeout and abort controller" "$README"; then
+  printf '%s\n' "README must document photo request ownership." >&2
+  exit 1
+fi
+
 if ! grep -Fq "CHANGES.md" "$README"; then
   printf '%s\n' "README must point to CHANGES.md." >&2
   exit 1
@@ -571,6 +608,17 @@ fi
 
 if ! grep -Fq "Status: Completed" "$PHOTO_TIMEOUT_PLAN" || ! grep -Fq "make check" "$PHOTO_TIMEOUT_PLAN"; then
   printf '%s\n' "Photo request timeout plan must record completed status and verification." >&2
+  exit 1
+fi
+
+if [ ! -f "$REQUEST_OWNERSHIP_PLAN" ]; then
+  printf '%s\n' "Photo request ownership plan is missing." >&2
+  exit 1
+fi
+
+if ! grep -Fq "Status: Completed" "$REQUEST_OWNERSHIP_PLAN" || \
+   ! grep -Fq "make check" "$REQUEST_OWNERSHIP_PLAN"; then
+  printf '%s\n' "Photo request ownership plan must record completed status and verification." >&2
   exit 1
 fi
 
