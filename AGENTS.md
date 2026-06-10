@@ -30,11 +30,14 @@
 ## Coding conventions
 
 - Language mix noted in the README: JavaScript (6), shell (1).
+- Use Node.js 20.19 or newer through Corepack-backed Yarn 1.22.22.
+- The frontend toolchain is React 19 with Vite 8 and Vitest 4.
+- ESLint and Prettier are configured explicitly rather than through Create React App.
 - Keep React components controlled and covered by component tests when props or rendering behavior changes.
 
 ## Testing guidance
 
-- Test-related files detected: `docs/plans/2026-06-08-api-react-example-security-test-baseline.md`, `src/App.test.js`, `src/setupTests.js`
+- Test-related files detected: `docs/plans/2026-06-08-api-react-example-security-test-baseline.md`, `src/App.test.jsx`, `src/setupTests.js`
 - Start with the narrowest relevant test or Make target, then run `make check` before handing off if the change is not documentation-only.
 - Keep README verification notes in sync when commands, fixtures, or supported toolchains change.
 
