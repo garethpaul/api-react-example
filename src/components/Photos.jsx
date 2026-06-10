@@ -9,8 +9,7 @@ function hasText(value) {
 
 function isPhotoId(value) {
   return (
-    (typeof value === 'number' && Number.isFinite(value)) ||
-    hasText(value)
+    (typeof value === 'number' && Number.isFinite(value)) || hasText(value)
   );
 }
 
@@ -34,7 +33,7 @@ function normalizeHttpsUrl(value) {
     }
 
     return url.href;
-  } catch (error) {
+  } catch {
     return null;
   }
 }
@@ -143,7 +142,7 @@ class Photos extends React.Component {
 
       const photos = normalizePhotos(await response.json());
       this.setPhotosState({ photos, loading: false, error: null });
-    } catch (error) {
+    } catch {
       this.setPhotosState({
         photos: [],
         loading: false,

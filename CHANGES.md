@@ -1,5 +1,19 @@
 # API React Example Changes
 
+## 2026-06-10
+
+- Replaced deprecated Create React App with Vite 8 and Vitest 4.
+- Upgraded React and React DOM to 19.2.7 while preserving the existing photo
+  rendering and validation behavior.
+- Added explicit ESLint and Prettier tooling plus a pinned, least-privilege
+  GitHub Actions verification workflow on Node 20, 22, and 24.
+- Removed the unused Create React App service-worker helper and template entry.
+- Replaced the blocked Bootstrap CDN stylesheet with local responsive gallery
+  styles and set a browser-compatible production target.
+- Replaced the vulnerable 1,512-package Create React App dependency graph with
+  a directly managed supported frontend toolchain and pinned the remaining
+  nested `debug` dependency to its patched release.
+
 ## 2026-06-09
 
 - Aborted pending photo fetches on component unmount when `AbortController` is
@@ -13,11 +27,11 @@
   and repeated records use the existing error state.
 - Normalized accepted photo render fields so titles are trimmed and thumbnail
   URLs are canonicalized before they reach headings, alt text, and image srcs.
-- Required photo thumbnail URLs to parse as HTTPS before rendering, with Jest
+- Required photo thumbnail URLs to parse as HTTPS before rendering, with test
   and source-baseline coverage for insecure URLs.
 - Added photo item shape validation so malformed records use the existing error
   state instead of rendering broken cards.
-- Added Jest and source-baseline coverage for missing photo render fields.
+- Added component and source-baseline coverage for missing photo render fields.
 - Documented the photo record rendering contract in the README and vision.
 
 ## 2026-06-08

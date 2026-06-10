@@ -1,6 +1,7 @@
 # api-react-example
 
 <!-- README-OVERVIEW-IMAGE -->
+
 ![Project overview](docs/readme-overview.svg)
 
 ## Overview
@@ -33,7 +34,7 @@ Additional scan context:
 ### Prerequisites
 
 - Git
-- Node.js and npm
+- Node.js 20.19 or newer
 - Corepack
 
 ### Setup
@@ -48,16 +49,16 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
 
 ## Running or Using the Project
 
-- Run `corepack yarn start` for the default development command.
+- Run `corepack yarn start` to launch the Vite development server.
 
 Detected package scripts:
 
-- `corepack yarn build` - `react-scripts build`
-- `corepack yarn eject` - `react-scripts eject`
-- `corepack yarn lint` - `eslint src --max-warnings=0`
-- `corepack yarn start` - `react-scripts start`
-- `corepack yarn test` - `react-scripts test`
-- `corepack yarn verify` - `sh scripts/check-baseline.sh && eslint src --max-warnings=0 && CI=true react-scripts test --watchAll=false && react-scripts build`
+- `corepack yarn build` - create an optimized Vite production bundle
+- `corepack yarn format:check` - verify formatting with Prettier
+- `corepack yarn lint` - run explicit ESLint checks
+- `corepack yarn start` - start the Vite development server
+- `corepack yarn test` - run the Vitest component suite once
+- `corepack yarn verify` - run the baseline, lint, formatting, tests, and build
 
 ## Testing and Verification
 
@@ -67,10 +68,14 @@ Run the source baseline, lint, tests, and production build:
 make check
 sh scripts/check-baseline.sh
 corepack yarn lint
-CI=true corepack yarn test --watchAll=false
+corepack yarn test
 corepack yarn build
 corepack yarn verify
 ```
+
+GitHub Actions performs the frozen Yarn install and runs the same `make check`
+gate on Node 20, 22, and 24 for pull requests, pushes to `master`, and manual
+maintenance runs.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
@@ -82,7 +87,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 
 - Review changes touching network requests, sockets, or service endpoints; examples from the scan include docs/plans/2026-06-08-api-react-example-security-test-baseline.md, public/index.html, public/robots.txt, scripts/check-baseline.sh, and 5 more.
 - Review changes touching file, media, JSON, XML, CSV, OCR, or data parsing; examples from the scan include docs/plans/2026-06-08-api-react-example-baseline-guard.md, docs/plans/2026-06-08-api-react-example-security-test-baseline.md, public/index.html, public/manifest.json, and 3 more.
-- Review changes touching database, model, or persistence code; examples from the scan include docs/plans/2026-06-08-api-react-example-baseline-guard.md, docs/plans/2026-06-08-api-react-example-security-test-baseline.md, src/serviceWorker.js.
+- The current frontend toolchain uses React 19, Vite 8, Vitest 4, and explicit
+  ESLint and Prettier configuration.
 
 ## Maintenance Notes
 

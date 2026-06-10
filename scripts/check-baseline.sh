@@ -3,8 +3,8 @@ set -eu
 
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 PACKAGE_JSON="$ROOT_DIR/package.json"
-PHOTOS="$ROOT_DIR/src/components/Photos.js"
-APP_TEST="$ROOT_DIR/src/App.test.js"
+PHOTOS="$ROOT_DIR/src/components/Photos.jsx"
+APP_TEST="$ROOT_DIR/src/App.test.jsx"
 README="$ROOT_DIR/README.md"
 RECORD_SHAPE_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-record-shape-validation.md"
 THUMBNAIL_URL_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-thumbnail-url-validation.md"
@@ -14,6 +14,8 @@ UNMOUNT_GUARD_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-unmount-state-guard.md
 PHOTO_ID_TYPE_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-id-type-validation.md"
 THUMBNAIL_CREDENTIAL_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-thumbnail-credential-validation.md"
 PHOTO_ABORT_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-fetch-abort-guard.md"
+TOOLCHAIN_PLAN="$ROOT_DIR/docs/plans/2026-06-10-vite-toolchain-migration.md"
+WORKFLOW="$ROOT_DIR/.github/workflows/check.yml"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
   printf '%s\n' "CHANGES.md must document repository maintenance." >&2
@@ -90,17 +92,76 @@ if [ -f "$ROOT_DIR/package-lock.json" ]; then
   exit 1
 fi
 
-if git -C "$ROOT_DIR" ls-files 'node_modules/*' 'build/*' | grep -q .; then
-  printf '%s\n' "Generated node_modules/ and build/ artifacts must not be tracked." >&2
+if git -C "$ROOT_DIR" ls-files 'node_modules/*' 'build/*' 'dist/*' | grep -q .; then
+  printf '%s\n' "Generated dependency and build artifacts must not be tracked." >&2
   exit 1
 fi
 
 for dependency in \
-  '"react": "18.3.1"' \
-  '"react-dom": "18.3.1"' \
-  '"react-scripts": "5.0.1"'; do
+  '"react": "19.2.7"' \
+  '"react-dom": "19.2.7"' \
+  '"vite": "8.0.16"' \
+  '"vitest": "4.1.8"'; do
   if ! grep -Fq "$dependency" "$PACKAGE_JSON"; then
     printf '%s\n' "Expected dependency pin is missing: $dependency" >&2
+    exit 1
+  fi
+done
+
+if grep -Fq '"react-scripts"' "$PACKAGE_JSON"; then
+  printf '%s\n' "Deprecated react-scripts must not remain in package.json." >&2
+  exit 1
+fi
+
+for package_contract in \
+  '"packageManager": "yarn@1.22.22"' \
+  '"node": ">=20.19"' \
+  '"debug": "4.4.3"' \
+  '"build": "vite build"' \
+  '"format:check": "prettier --check ."' \
+  '"test": "vitest run"'; do
+  if ! grep -Fq "$package_contract" "$PACKAGE_JSON"; then
+    printf '%s\n' "Expected package contract is missing: $package_contract" >&2
+    exit 1
+  fi
+done
+
+if ! grep -Fq "/dist" "$ROOT_DIR/.gitignore"; then
+  printf '%s\n' ".gitignore must exclude Vite's dist output." >&2
+  exit 1
+fi
+
+for required_file in \
+  "index.html" \
+  "vite.config.js" \
+  "eslint.config.js" \
+  ".prettierrc.json" \
+  ".github/workflows/check.yml" \
+  "docs/plans/2026-06-10-vite-toolchain-migration.md"; do
+  if [ ! -f "$ROOT_DIR/$required_file" ]; then
+    printf '%s\n' "Required modern toolchain file is missing: $required_file" >&2
+    exit 1
+  fi
+done
+
+if [ -f "$ROOT_DIR/public/index.html" ] || [ -f "$ROOT_DIR/src/serviceWorker.js" ]; then
+  printf '%s\n' "Obsolete Create React App entry files must be removed." >&2
+  exit 1
+fi
+
+for workflow_contract in \
+  "permissions:" \
+  "contents: read" \
+  "timeout-minutes: 10" \
+  "actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10" \
+  "actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e" \
+  "node-version: [20, 22, 24]" \
+  "node-version: \${{ matrix.node-version }}" \
+  "workflow_dispatch:" \
+  "run: corepack yarn install --frozen-lockfile" \
+  "run: make check"; do
+  if ! grep -Fq "$workflow_contract" "$WORKFLOW"; then
+    printf '%s\n' "GitHub Actions workflow must keep contract: $workflow_contract" >&2
     exit 1
   fi
 done
@@ -335,13 +396,13 @@ if ! grep -Fq "limits rendered photos from large API responses" "$APP_TEST"; the
   exit 1
 fi
 
-if ! grep -Fq '"lint": "eslint src --max-warnings=0"' "$PACKAGE_JSON"; then
+if ! grep -Fq '"lint": "eslint src vite.config.js eslint.config.js"' "$PACKAGE_JSON"; then
   printf '%s\n' "package.json must expose an explicit lint gate." >&2
   exit 1
 fi
 
-if ! grep -Fq "eslint src --max-warnings=0 && CI=true react-scripts test --watchAll=false" "$PACKAGE_JSON"; then
-  printf '%s\n' "package.json verify script must run lint before tests." >&2
+if ! grep -Fq "yarn lint && yarn format:check && yarn test && yarn build" "$PACKAGE_JSON"; then
+  printf '%s\n' "package.json verify script must run lint, format, tests, and build." >&2
   exit 1
 fi
 
@@ -365,8 +426,23 @@ if ! grep -Fq "corepack yarn lint" "$README"; then
   exit 1
 fi
 
-if ! grep -Fq "CI=true corepack yarn test --watchAll=false" "$README"; then
+if ! grep -Fq "corepack yarn test" "$README"; then
   printf '%s\n' "README must document the CI test gate." >&2
+  exit 1
+fi
+
+if ! grep -Fq "Vite" "$README" || ! grep -Fq "Vitest" "$README"; then
+  printf '%s\n' "README must document the Vite and Vitest toolchain." >&2
+  exit 1
+fi
+
+if ! grep -Fq "GitHub Actions" "$README"; then
+  printf '%s\n' "README must document hosted verification." >&2
+  exit 1
+fi
+
+if ! grep -Fq "Status: Completed" "$TOOLCHAIN_PLAN" || ! grep -Fq "make check" "$TOOLCHAIN_PLAN"; then
+  printf '%s\n' "Vite migration plan must record completed status and verification." >&2
   exit 1
 fi
 

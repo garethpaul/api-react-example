@@ -5,9 +5,10 @@ YARN ?= corepack yarn
 lint:
 	sh scripts/check-baseline.sh
 	$(YARN) lint
+	$(YARN) format:check
 
 test:
-	CI=true $(YARN) test --watchAll=false
+	$(YARN) test
 
 build:
 	$(YARN) build
