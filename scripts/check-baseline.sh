@@ -159,6 +159,7 @@ for workflow_contract in \
   "cancel-in-progress: true" \
   "timeout-minutes: 10" \
   "actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10" \
+  "persist-credentials: false" \
   "actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e" \
   "node-version: [20, 22, 24]" \
   "node-version: \${{ matrix.node-version }}" \
@@ -170,6 +171,30 @@ for workflow_contract in \
     exit 1
   fi
 done
+
+workflow_paths=$(find "$ROOT_DIR/.github/workflows" -type f \( -name '*.yml' -o -name '*.yaml' \) -print | LC_ALL=C sort)
+if [ "$workflow_paths" != "$WORKFLOW" ]; then
+  printf '%s\n' "The canonical check workflow must be the only GitHub Actions workflow." >&2
+  exit 1
+fi
+
+if grep -E '^[[:space:]]*(-[[:space:]]+)?uses:' "$WORKFLOW" | \
+   grep -Ev '@[0-9a-f]{40}([[:space:]]+#.*)?$' >/dev/null; then
+  printf '%s\n' "GitHub Actions must use immutable commit SHAs." >&2
+  exit 1
+fi
+
+if [ "$(grep -Ec '^[[:space:]]*permissions:' "$WORKFLOW")" -ne 1 ] || \
+   grep -Eq 'write-all|contents:[[:space:]]*write|pull-requests:[[:space:]]*write|actions:[[:space:]]*write' "$WORKFLOW"; then
+  printf '%s\n' "GitHub Actions permissions must remain globally read-only." >&2
+  exit 1
+fi
+
+if [ "$(grep -Ec '^[[:space:]]+run:' "$WORKFLOW")" -ne 2 ] || \
+   grep -Eq 'continue-on-error:[[:space:]]*true|if:[[:space:]]*false' "$WORKFLOW"; then
+  printf '%s\n' "GitHub Actions must run exactly the frozen install and full Make gate without bypasses." >&2
+  exit 1
+fi
 
 if ! grep -Fq 'ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))' "$ROOT_DIR/Makefile"; then
   printf '%s\n' "Makefile checks must be location-independent." >&2
@@ -228,7 +253,7 @@ fi
 for timeout_contract in \
   "PHOTO_REQUEST_TIMEOUT_MS = 10000" \
   "timeoutId: null" \
-  "createPhotoRequestTimeout(request)" \
+  "this.createPhotoRequestTimeout(request)," \
   "setTimeout(() =>" \
   "request.abortController.abort()" \
   "reject(new Error('Photo request timed out.'))" \
