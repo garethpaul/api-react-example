@@ -31,6 +31,7 @@ Priority:
 - Bound photo requests so stalled endpoints cannot leave the UI loading forever
 - Keep photo request completion and cleanup owned by the latest mounted request
 - Keep the app small enough for beginners to inspect
+- Keep CodeQL default-setup coverage for workflow and JavaScript trust boundaries
 
 Next priorities:
 

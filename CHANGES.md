@@ -2,6 +2,9 @@
 
 ## 2026-06-12
 
+- Documented the existing GitHub CodeQL default setup for GitHub Actions and
+  JavaScript/TypeScript, and rejected a duplicate advanced workflow that
+  conflicts with the repository setting.
 - Added lazy thumbnail loading and a no-referrer image policy so arbitrary
   thumbnail hosts do not receive the application page URL.
 

@@ -27,6 +27,9 @@ Helpful reports include:
 - This repository appears to be a JavaScript web application or frontend sample. The active security scope is the code and documentation on the default branch.
 - Review found network clients, sockets, web APIs, or service endpoints; changes in those areas should receive security-focused review before merge.
 - Review found mobile permission or privacy-sensitive data handling; changes in those areas should receive security-focused review before merge.
+- CodeQL default-setup results cover the repository's GitHub Actions and
+  JavaScript/TypeScript surfaces; findings should be triaged without weakening
+  the existing lint, test, build, or request-boundary gates.
 - Review found file, document, data, or media parsing flows; changes in those areas should receive security-focused review before merge.
 - Review found database, model, query, or persistence-related code; changes in those areas should receive security-focused review before merge.
 - Dependency manifests detected: package.json, yarn.lock. Dependency updates should preserve lockfiles when present and avoid introducing packages without a clear maintenance reason.
