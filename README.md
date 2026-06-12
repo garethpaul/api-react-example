@@ -74,7 +74,8 @@ corepack yarn verify
 ```
 
 GitHub Actions performs the frozen Yarn install and runs the same `make check`
-gate for pull requests and pushes to `master`.
+gate on Node 20, 22, and 24 for pull requests, pushes to `master`, and manual
+maintenance runs. The workflow uses Ubuntu 24.04 and cancels superseded runs.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
@@ -96,6 +97,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - Thumbnail URLs must parse as HTTPS URLs before the app renders image elements.
 - Thumbnail URLs with embedded credentials are rejected before image elements
   are rendered.
+- Thumbnails load lazily with a no-referrer policy so arbitrary image hosts do
+  not receive the application page URL.
 - Accepted photo titles and thumbnail URLs are normalized before they are used
   in headings, alt text, and image sources.
 - Photo IDs must be unique after React key coercion before cards are rendered.
@@ -104,8 +107,14 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - Pending photo loads skip state updates after the component unmounts.
 - Pending photo loads are aborted when the component unmounts on browsers that
   support `AbortController`.
+- Photo requests time out after 10 seconds, abort when supported, and leave the
+  loading state through the existing user-visible error path.
+- Each photo request owns its timeout and abort controller, and only the active
+  request may update state or clear current request resources after a remount.
 - See `docs/plans/2026-06-09-photo-fetch-abort-guard.md` for the pending photo
   fetch abort guard.
+- See `docs/plans/2026-06-10-photo-request-timeout.md` for the bounded request
+  and timer cleanup contract.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
 - See `docs/plans/2026-06-08-api-react-example-check-wrapper.md` for the root
   verification wrapper baseline.

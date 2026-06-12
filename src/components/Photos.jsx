@@ -2,6 +2,7 @@ import React from 'react';
 
 export const PHOTO_ENDPOINT = 'https://jsonplaceholder.typicode.com/photos';
 export const MAX_PHOTOS = 12;
+export const PHOTO_REQUEST_TIMEOUT_MS = 10000;
 
 function hasText(value) {
   return typeof value === 'string' && value.trim().length > 0;
@@ -101,7 +102,7 @@ class Photos extends React.Component {
   };
 
   isActive = false;
-  abortController = null;
+  activeRequest = null;
 
   componentDidMount() {
     this.isActive = true;
@@ -110,46 +111,96 @@ class Photos extends React.Component {
 
   componentWillUnmount() {
     this.isActive = false;
-    if (this.abortController) {
-      this.abortController.abort();
-    }
+    this.cancelActivePhotoRequest();
   }
 
-  setPhotosState(nextState) {
-    if (this.isActive) {
+  setPhotosState(request, nextState) {
+    if (this.isActive && this.activeRequest === request) {
       this.setState(nextState);
     }
   }
 
-  createPhotoRequestOptions() {
-    if (typeof AbortController === 'undefined') {
-      return null;
+  createPhotoRequest() {
+    this.cancelActivePhotoRequest();
+    const request = {
+      abortController:
+        typeof AbortController === 'undefined' ? null : new AbortController(),
+      timeoutId: null,
+    };
+    this.activeRequest = request;
+    return request;
+  }
+
+  createPhotoRequestOptions(request) {
+    return request.abortController
+      ? { signal: request.abortController.signal }
+      : null;
+  }
+
+  createPhotoRequestTimeout(request) {
+    return new Promise((_, reject) => {
+      request.timeoutId = setTimeout(() => {
+        request.timeoutId = null;
+        if (request.abortController) {
+          request.abortController.abort();
+        }
+        reject(new Error('Photo request timed out.'));
+      }, PHOTO_REQUEST_TIMEOUT_MS);
+    });
+  }
+
+  clearPhotoRequestTimeout(request) {
+    if (request.timeoutId !== null) {
+      clearTimeout(request.timeoutId);
+      request.timeoutId = null;
+    }
+  }
+
+  cancelActivePhotoRequest() {
+    const request = this.activeRequest;
+    if (!request) {
+      return;
     }
 
-    this.abortController = new AbortController();
-    return { signal: this.abortController.signal };
+    this.activeRequest = null;
+    this.clearPhotoRequestTimeout(request);
+    if (request.abortController) {
+      request.abortController.abort();
+    }
+  }
+
+  async fetchPhotos(requestOptions) {
+    const response = requestOptions
+      ? await fetch(PHOTO_ENDPOINT, requestOptions)
+      : await fetch(PHOTO_ENDPOINT);
+    if (!response.ok) {
+      throw new Error(`Photo request failed with ${response.status}`);
+    }
+
+    return normalizePhotos(await response.json());
   }
 
   async loadPhotos() {
+    const request = this.createPhotoRequest();
     try {
-      const requestOptions = this.createPhotoRequestOptions();
-      const response = requestOptions
-        ? await fetch(PHOTO_ENDPOINT, requestOptions)
-        : await fetch(PHOTO_ENDPOINT);
-      if (!response.ok) {
-        throw new Error(`Photo request failed with ${response.status}`);
-      }
-
-      const photos = normalizePhotos(await response.json());
-      this.setPhotosState({ photos, loading: false, error: null });
+      const requestOptions = this.createPhotoRequestOptions(request);
+      const photoRequest = this.fetchPhotos(requestOptions);
+      const photos = await Promise.race([
+        photoRequest,
+        this.createPhotoRequestTimeout(request),
+      ]);
+      this.setPhotosState(request, { photos, loading: false, error: null });
     } catch {
-      this.setPhotosState({
+      this.setPhotosState(request, {
         photos: [],
         loading: false,
         error: 'Unable to load photos.',
       });
     } finally {
-      this.abortController = null;
+      this.clearPhotoRequestTimeout(request);
+      if (this.activeRequest === request) {
+        this.activeRequest = null;
+      }
     }
   }
 
@@ -166,7 +217,12 @@ class Photos extends React.Component {
             <article className="card" key={photo.id}>
               <div className="card-body">
                 <h2 className="card-title">{photo.title}</h2>
-                <img src={photo.thumbnailUrl} alt={photo.title} />
+                <img
+                  src={photo.thumbnailUrl}
+                  alt={photo.title}
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                />
               </div>
             </article>
           ))}

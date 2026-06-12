@@ -1,17 +1,18 @@
 .PHONY: build check lint test verify
 
 YARN ?= corepack yarn
+ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 lint:
-	sh scripts/check-baseline.sh
-	$(YARN) lint
-	$(YARN) format:check
+	cd $(ROOT) && sh scripts/check-baseline.sh
+	cd $(ROOT) && $(YARN) lint
+	cd $(ROOT) && $(YARN) format:check
 
 test:
-	$(YARN) test
+	cd $(ROOT) && $(YARN) test
 
 build:
-	$(YARN) build
+	cd $(ROOT) && $(YARN) build
 
 verify: lint test build
 

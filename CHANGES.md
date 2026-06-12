@@ -1,12 +1,23 @@
 # API React Example Changes
 
+## 2026-06-12
+
+- Added lazy thumbnail loading and a no-referrer image policy so arbitrary
+  thumbnail hosts do not receive the application page URL.
+
 ## 2026-06-10
 
+- Added a 10-second photo request timeout that aborts when supported, renders
+  the existing error state, and clears timers on success or unmount.
+- Scoped photo timers, abort controllers, completion, and cleanup to request
+  identity so a Strict Mode remount cannot let stale work replace current state.
+- Added fake-timer timeout coverage, made Make targets location-independent,
+  and pinned CI to Ubuntu 24.04 with superseded-run cancellation.
 - Replaced deprecated Create React App with Vite 8 and Vitest 4.
 - Upgraded React and React DOM to 19.2.7 while preserving the existing photo
   rendering and validation behavior.
 - Added explicit ESLint and Prettier tooling plus a pinned, least-privilege
-  GitHub Actions verification workflow.
+  GitHub Actions verification workflow on Node 20, 22, and 24.
 - Removed the unused Create React App service-worker helper and template entry.
 - Replaced the blocked Bootstrap CDN stylesheet with local responsive gallery
   styles and set a browser-compatible production target.

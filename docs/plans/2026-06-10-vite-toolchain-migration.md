@@ -15,8 +15,9 @@ existing component contracts.
 - Upgrade React and React DOM to the current supported major release.
 - Keep lint, formatting, tests, build, and repository contracts behind
   `make check`.
-- Add hosted CI with immutable action pins, read-only permissions, a bounded
-  timeout, a frozen lockfile install, and the shared verification command.
+- Add hosted CI on Node 20, 22, and 24 with immutable action pins, read-only
+  permissions, a bounded timeout, manual dispatch, a frozen lockfile install,
+  and the shared verification command.
 - Remove obsolete Create React App entry and service-worker files.
 - Keep the production bundle compatible with the documented browser baseline
   and avoid runtime dependence on a third-party stylesheet CDN.
@@ -38,4 +39,5 @@ existing component contracts.
 - `corepack yarn install --frozen-lockfile`
 - `make check`
 - `corepack yarn audit --json`
+- 15 Vitest component tests pass and the direct dependency set is current.
 - `git diff --check`

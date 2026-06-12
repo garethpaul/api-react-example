@@ -1,7 +1,11 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
 import App from './App';
-import Photos, { MAX_PHOTOS, PHOTO_ENDPOINT } from './components/Photos';
+import Photos, {
+  MAX_PHOTOS,
+  PHOTO_ENDPOINT,
+  PHOTO_REQUEST_TIMEOUT_MS,
+} from './components/Photos';
 
 const photos = [
   {
@@ -28,6 +32,7 @@ afterEach(() => {
   vi.restoreAllMocks();
   delete global.fetch;
   global.AbortController = originalAbortController;
+  vi.useRealTimers();
 });
 
 test('renders the photo list heading from the app shell', async () => {
@@ -60,6 +65,16 @@ test('loads and renders photos from the placeholder API', async () => {
     'src',
     'https://example.com/second.jpg',
   );
+});
+
+test('loads thumbnails lazily without sending a referrer', async () => {
+  mockFetchSuccess();
+
+  render(<Photos />);
+
+  const image = await screen.findByAltText('First photo');
+  expect(image).toHaveAttribute('loading', 'lazy');
+  expect(image).toHaveAttribute('referrerpolicy', 'no-referrer');
 });
 
 test('renders an error state when the photo request fails', async () => {
@@ -127,6 +142,80 @@ test('aborts pending photo fetch after unmount', () => {
   unmount();
 
   expect(abort).toHaveBeenCalledTimes(1);
+});
+
+test('ignores a superseded request after the same instance remounts', async () => {
+  let rejectFirstRequest;
+  global.fetch = vi
+    .fn()
+    .mockImplementationOnce(
+      () =>
+        new Promise((_, reject) => {
+          rejectFirstRequest = reject;
+        }),
+    )
+    .mockResolvedValueOnce({
+      ok: true,
+      json: vi.fn().mockResolvedValue(photos),
+    });
+  const component = new Photos({});
+  component.setState = vi.fn();
+
+  component.componentDidMount();
+  component.componentWillUnmount();
+  component.componentDidMount();
+
+  await waitFor(() =>
+    expect(component.setState).toHaveBeenCalledWith({
+      photos: photos.map((photo) => ({ ...photo, id: String(photo.id) })),
+      loading: false,
+      error: null,
+    }),
+  );
+
+  await act(async () => {
+    rejectFirstRequest(new Error('superseded request failed'));
+  });
+
+  expect(component.setState).toHaveBeenCalledTimes(1);
+  component.componentWillUnmount();
+});
+
+test('aborts and renders an error when the photo request times out', async () => {
+  vi.useFakeTimers();
+  const abort = vi.fn();
+  const signal = {};
+  global.AbortController = vi.fn(function MockAbortController() {
+    this.abort = abort;
+    this.signal = signal;
+  });
+  global.fetch = vi.fn(() => new Promise(() => {}));
+
+  render(<Photos />);
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(PHOTO_REQUEST_TIMEOUT_MS);
+  });
+
+  expect(abort).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole('alert')).toHaveTextContent('Unable to load photos.');
+});
+
+test('times out while parsing photos without abort support', async () => {
+  vi.useFakeTimers();
+  global.AbortController = undefined;
+  global.fetch = vi.fn().mockResolvedValue({
+    ok: true,
+    json: vi.fn(() => new Promise(() => {})),
+  });
+
+  render(<Photos />);
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(PHOTO_REQUEST_TIMEOUT_MS);
+  });
+
+  expect(screen.getByRole('alert')).toHaveTextContent('Unable to load photos.');
 });
 
 test('renders an error state when the photo response is not an array', async () => {

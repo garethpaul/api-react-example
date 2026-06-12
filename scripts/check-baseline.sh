@@ -15,6 +15,9 @@ PHOTO_ID_TYPE_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-id-type-validation.md"
 THUMBNAIL_CREDENTIAL_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-thumbnail-credential-validation.md"
 PHOTO_ABORT_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-fetch-abort-guard.md"
 TOOLCHAIN_PLAN="$ROOT_DIR/docs/plans/2026-06-10-vite-toolchain-migration.md"
+PHOTO_TIMEOUT_PLAN="$ROOT_DIR/docs/plans/2026-06-10-photo-request-timeout.md"
+REQUEST_OWNERSHIP_PLAN="$ROOT_DIR/docs/plans/2026-06-10-photo-request-ownership.md"
+THUMBNAIL_REFERRER_PLAN="$ROOT_DIR/docs/plans/2026-06-12-photo-thumbnail-referrer-privacy.md"
 WORKFLOW="$ROOT_DIR/.github/workflows/check.yml"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
@@ -152,9 +155,15 @@ fi
 for workflow_contract in \
   "permissions:" \
   "contents: read" \
+  "runs-on: ubuntu-24.04" \
+  "cancel-in-progress: true" \
   "timeout-minutes: 10" \
-  "actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5" \
-  "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020" \
+  "actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10" \
+  "persist-credentials: false" \
+  "actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e" \
+  "node-version: [20, 22, 24]" \
+  "node-version: \${{ matrix.node-version }}" \
+  "workflow_dispatch:" \
   "run: corepack yarn install --frozen-lockfile" \
   "run: make check"; do
   if ! grep -Fq "$workflow_contract" "$WORKFLOW"; then
@@ -162,6 +171,40 @@ for workflow_contract in \
     exit 1
   fi
 done
+
+workflow_paths=$(find "$ROOT_DIR/.github/workflows" -type f \( -name '*.yml' -o -name '*.yaml' \) -print | LC_ALL=C sort)
+if [ "$workflow_paths" != "$WORKFLOW" ]; then
+  printf '%s\n' "The canonical check workflow must be the only GitHub Actions workflow." >&2
+  exit 1
+fi
+
+if grep -E '^[[:space:]]*(-[[:space:]]+)?uses:' "$WORKFLOW" | \
+   grep -Ev '@[0-9a-f]{40}([[:space:]]+#.*)?$' >/dev/null; then
+  printf '%s\n' "GitHub Actions must use immutable commit SHAs." >&2
+  exit 1
+fi
+
+if [ "$(grep -Ec '^[[:space:]]*permissions:' "$WORKFLOW")" -ne 1 ] || \
+   grep -Eq 'write-all|contents:[[:space:]]*write|pull-requests:[[:space:]]*write|actions:[[:space:]]*write' "$WORKFLOW"; then
+  printf '%s\n' "GitHub Actions permissions must remain globally read-only." >&2
+  exit 1
+fi
+
+if [ "$(grep -Ec '^[[:space:]]+run:' "$WORKFLOW")" -ne 2 ] || \
+   grep -Eq 'continue-on-error:[[:space:]]*true|if:[[:space:]]*false' "$WORKFLOW"; then
+  printf '%s\n' "GitHub Actions must run exactly the frozen install and full Make gate without bypasses." >&2
+  exit 1
+fi
+
+if ! grep -Fq 'ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))' "$ROOT_DIR/Makefile"; then
+  printf '%s\n' "Makefile checks must be location-independent." >&2
+  exit 1
+fi
+
+if ! grep -Fq 'cd $(ROOT) &&' "$ROOT_DIR/Makefile"; then
+  printf '%s\n' "Makefile commands must execute from the repository root." >&2
+  exit 1
+fi
 
 if ! grep -Fq 'PHOTO_ENDPOINT = '\''https://jsonplaceholder.typicode.com/photos'\''' "$PHOTOS"; then
   printf '%s\n' "Photo endpoint must stay on HTTPS JSONPlaceholder." >&2
@@ -178,12 +221,26 @@ if ! grep -Fq "componentWillUnmount()" "$PHOTOS"; then
   exit 1
 fi
 
-if ! grep -Fq "isActive = false" "$PHOTOS" || ! grep -Fq "setPhotosState(nextState)" "$PHOTOS"; then
+if ! grep -Fq "isActive = false" "$PHOTOS" || \
+   ! grep -Fq "setPhotosState(request, nextState)" "$PHOTOS" || \
+   ! grep -Fq "this.activeRequest === request" "$PHOTOS"; then
   printf '%s\n' "Photos component must centralize mounted-state checks before setState." >&2
   exit 1
 fi
 
-if ! grep -Fq "abortController = null" "$PHOTOS" || ! grep -Fq "this.abortController.abort()" "$PHOTOS"; then
+if ! awk '
+  /setPhotosState\(request, nextState\)/ { in_state_helper = 1 }
+  in_state_helper && /this\.isActive && this\.activeRequest === request/ { found = 1 }
+  in_state_helper && /^  }/ { in_state_helper = 0 }
+  END { exit found ? 0 : 1 }
+' "$PHOTOS"; then
+  printf '%s\n' "Photo state updates must verify active request identity inside setPhotosState." >&2
+  exit 1
+fi
+
+if ! grep -Fq "activeRequest = null" "$PHOTOS" || \
+   ! grep -Fq "request.abortController.abort()" "$PHOTOS" || \
+   ! grep -Fq "cancelActivePhotoRequest()" "$PHOTOS"; then
   printf '%s\n' "Photos component must abort pending photo fetches during unmount." >&2
   exit 1
 fi
@@ -192,6 +249,50 @@ if ! grep -Fq "new AbortController()" "$PHOTOS" || ! grep -Fq "fetch(PHOTO_ENDPO
   printf '%s\n' "Photos component must pass an abort signal to photo fetch when supported." >&2
   exit 1
 fi
+
+for timeout_contract in \
+  "PHOTO_REQUEST_TIMEOUT_MS = 10000" \
+  "timeoutId: null" \
+  "this.createPhotoRequestTimeout(request)," \
+  "setTimeout(() =>" \
+  "request.abortController.abort()" \
+  "reject(new Error('Photo request timed out.'))" \
+  "Promise.race([" \
+  "async fetchPhotos(requestOptions)" \
+  "const photoRequest = this.fetchPhotos(requestOptions)" \
+  "clearPhotoRequestTimeout(request)" \
+  "clearTimeout(request.timeoutId)"; do
+  if ! grep -Fq "$timeout_contract" "$PHOTOS"; then
+    printf '%s\n' "Missing photo request timeout contract: $timeout_contract" >&2
+    exit 1
+  fi
+done
+
+if grep -Fq "const photoRequest = await this.fetchPhotos(requestOptions)" "$PHOTOS"; then
+  printf '%s\n' "Photo operation must start without awaiting before the timeout race." >&2
+  exit 1
+fi
+
+if [ "$(grep -Fc 'this.clearPhotoRequestTimeout(request);' "$PHOTOS")" -lt 2 ]; then
+  printf '%s\n' "Photo timeout cleanup must run after completion and unmount." >&2
+  exit 1
+fi
+
+if [ "$(grep -Fc 'request.abortController.abort();' "$PHOTOS")" -lt 2 ]; then
+  printf '%s\n' "Photo requests must abort at timeout and unmount." >&2
+  exit 1
+fi
+
+for ownership_contract in \
+  "const request = this.createPhotoRequest()" \
+  "this.activeRequest = request" \
+  "this.setPhotosState(request," \
+  "if (this.activeRequest === request)"; do
+  if ! grep -Fq "$ownership_contract" "$PHOTOS"; then
+    printf '%s\n' "Missing photo request ownership contract: $ownership_contract" >&2
+    exit 1
+  fi
+done
 
 if grep -Fq "componentWillMount" "$PHOTOS"; then
   printf '%s\n' "Deprecated componentWillMount must not be reintroduced." >&2
@@ -313,6 +414,12 @@ if ! grep -Fq "thumbnailUrl: normalizeHttpsUrl(photo.thumbnailUrl)" "$PHOTOS"; t
   exit 1
 fi
 
+if ! grep -Fq 'loading="lazy"' "$PHOTOS" || \
+   ! grep -Fq 'referrerPolicy="no-referrer"' "$PHOTOS"; then
+  printf '%s\n' "Photo thumbnails must load lazily without sending page referrers." >&2
+  exit 1
+fi
+
 if ! grep -Fq "photos.map(normalizePhoto).slice(0, MAX_PHOTOS)" "$PHOTOS"; then
   printf '%s\n' "Photos component must normalize photos before applying the render cap." >&2
   exit 1
@@ -368,6 +475,24 @@ if ! grep -Fq "aborts pending photo fetch after unmount" "$APP_TEST"; then
   exit 1
 fi
 
+if ! grep -Fq "ignores a superseded request after the same instance remounts" "$APP_TEST" || \
+   ! grep -Fq "expect(component.setState).toHaveBeenCalledTimes(1)" "$APP_TEST"; then
+  printf '%s\n' "Tests must cover superseded request completion after remount." >&2
+  exit 1
+fi
+
+for timeout_test_contract in \
+  "aborts and renders an error when the photo request times out" \
+  "times out while parsing photos without abort support" \
+  "global.AbortController = undefined" \
+  "vi.useFakeTimers()" \
+  "vi.advanceTimersByTimeAsync(PHOTO_REQUEST_TIMEOUT_MS)"; do
+  if ! grep -Fq "$timeout_test_contract" "$APP_TEST"; then
+    printf '%s\n' "Missing photo timeout test contract: $timeout_test_contract" >&2
+    exit 1
+  fi
+done
+
 if ! grep -Fq "photo thumbnail URL is not HTTPS" "$APP_TEST"; then
   printf '%s\n' "Tests must cover insecure thumbnail URL responses." >&2
   exit 1
@@ -380,6 +505,12 @@ fi
 
 if ! grep -Fq "trims photo titles and normalizes thumbnail URLs before rendering" "$APP_TEST"; then
   printf '%s\n' "Tests must cover accepted photo render field normalization." >&2
+  exit 1
+fi
+
+if ! grep -Fq "loads thumbnails lazily without sending a referrer" "$APP_TEST" || \
+   ! grep -Fq "toHaveAttribute('referrerpolicy', 'no-referrer')" "$APP_TEST"; then
+  printf '%s\n' "Tests must cover thumbnail referrer privacy." >&2
   exit 1
 fi
 
@@ -463,8 +594,23 @@ if ! grep -Fq "Thumbnail URLs with embedded credentials are rejected" "$README";
   exit 1
 fi
 
+if ! grep -Fq "Thumbnails load lazily with a no-referrer policy" "$README"; then
+  printf '%s\n' "README must document thumbnail referrer privacy." >&2
+  exit 1
+fi
+
 if ! grep -Fq "Pending photo loads are aborted when the component unmounts" "$README"; then
   printf '%s\n' "README must document pending photo fetch abort handling." >&2
+  exit 1
+fi
+
+if ! grep -Fq "Photo requests time out after 10 seconds" "$README"; then
+  printf '%s\n' "README must document the photo request timeout." >&2
+  exit 1
+fi
+
+if ! grep -Fq "Each photo request owns its timeout and abort controller" "$README"; then
+  printf '%s\n' "README must document photo request ownership." >&2
   exit 1
 fi
 
@@ -495,6 +641,34 @@ fi
 
 if ! grep -Fq "status: completed" "$PHOTO_ABORT_PLAN" || ! grep -Fq "make check" "$PHOTO_ABORT_PLAN"; then
   printf '%s\n' "Photo fetch abort guard plan must record completed status and make check verification." >&2
+  exit 1
+fi
+
+if [ ! -f "$PHOTO_TIMEOUT_PLAN" ]; then
+  printf '%s\n' "Photo request timeout plan is missing." >&2
+  exit 1
+fi
+
+if ! grep -Fq "Status: Completed" "$PHOTO_TIMEOUT_PLAN" || ! grep -Fq "make check" "$PHOTO_TIMEOUT_PLAN"; then
+  printf '%s\n' "Photo request timeout plan must record completed status and verification." >&2
+  exit 1
+fi
+
+if [ ! -f "$REQUEST_OWNERSHIP_PLAN" ]; then
+  printf '%s\n' "Photo request ownership plan is missing." >&2
+  exit 1
+fi
+
+if ! grep -Fq "Status: Completed" "$REQUEST_OWNERSHIP_PLAN" || \
+   ! grep -Fq "make check" "$REQUEST_OWNERSHIP_PLAN"; then
+  printf '%s\n' "Photo request ownership plan must record completed status and verification." >&2
+  exit 1
+fi
+
+if [ ! -f "$THUMBNAIL_REFERRER_PLAN" ] || \
+   ! grep -Fq "Status: Completed" "$THUMBNAIL_REFERRER_PLAN" || \
+   ! grep -Fq "make check" "$THUMBNAIL_REFERRER_PLAN"; then
+  printf '%s\n' "Photo thumbnail referrer plan must record completed status and verification." >&2
   exit 1
 fi
 
