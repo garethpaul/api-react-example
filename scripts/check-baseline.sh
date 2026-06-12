@@ -17,6 +17,7 @@ PHOTO_ABORT_PLAN="$ROOT_DIR/docs/plans/2026-06-09-photo-fetch-abort-guard.md"
 TOOLCHAIN_PLAN="$ROOT_DIR/docs/plans/2026-06-10-vite-toolchain-migration.md"
 PHOTO_TIMEOUT_PLAN="$ROOT_DIR/docs/plans/2026-06-10-photo-request-timeout.md"
 REQUEST_OWNERSHIP_PLAN="$ROOT_DIR/docs/plans/2026-06-10-photo-request-ownership.md"
+THUMBNAIL_REFERRER_PLAN="$ROOT_DIR/docs/plans/2026-06-12-photo-thumbnail-referrer-privacy.md"
 WORKFLOW="$ROOT_DIR/.github/workflows/check.yml"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
@@ -388,6 +389,12 @@ if ! grep -Fq "thumbnailUrl: normalizeHttpsUrl(photo.thumbnailUrl)" "$PHOTOS"; t
   exit 1
 fi
 
+if ! grep -Fq 'loading="lazy"' "$PHOTOS" || \
+   ! grep -Fq 'referrerPolicy="no-referrer"' "$PHOTOS"; then
+  printf '%s\n' "Photo thumbnails must load lazily without sending page referrers." >&2
+  exit 1
+fi
+
 if ! grep -Fq "photos.map(normalizePhoto).slice(0, MAX_PHOTOS)" "$PHOTOS"; then
   printf '%s\n' "Photos component must normalize photos before applying the render cap." >&2
   exit 1
@@ -476,6 +483,12 @@ if ! grep -Fq "trims photo titles and normalizes thumbnail URLs before rendering
   exit 1
 fi
 
+if ! grep -Fq "loads thumbnails lazily without sending a referrer" "$APP_TEST" || \
+   ! grep -Fq "toHaveAttribute('referrerpolicy', 'no-referrer')" "$APP_TEST"; then
+  printf '%s\n' "Tests must cover thumbnail referrer privacy." >&2
+  exit 1
+fi
+
 if ! grep -Fq "malformed photo is beyond the render limit" "$APP_TEST"; then
   printf '%s\n' "Tests must cover malformed photos beyond the display limit." >&2
   exit 1
@@ -556,6 +569,11 @@ if ! grep -Fq "Thumbnail URLs with embedded credentials are rejected" "$README";
   exit 1
 fi
 
+if ! grep -Fq "Thumbnails load lazily with a no-referrer policy" "$README"; then
+  printf '%s\n' "README must document thumbnail referrer privacy." >&2
+  exit 1
+fi
+
 if ! grep -Fq "Pending photo loads are aborted when the component unmounts" "$README"; then
   printf '%s\n' "README must document pending photo fetch abort handling." >&2
   exit 1
@@ -619,6 +637,13 @@ fi
 if ! grep -Fq "Status: Completed" "$REQUEST_OWNERSHIP_PLAN" || \
    ! grep -Fq "make check" "$REQUEST_OWNERSHIP_PLAN"; then
   printf '%s\n' "Photo request ownership plan must record completed status and verification." >&2
+  exit 1
+fi
+
+if [ ! -f "$THUMBNAIL_REFERRER_PLAN" ] || \
+   ! grep -Fq "Status: Completed" "$THUMBNAIL_REFERRER_PLAN" || \
+   ! grep -Fq "make check" "$THUMBNAIL_REFERRER_PLAN"; then
+  printf '%s\n' "Photo thumbnail referrer plan must record completed status and verification." >&2
   exit 1
 fi
 

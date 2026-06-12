@@ -1,5 +1,10 @@
 # API React Example Changes
 
+## 2026-06-12
+
+- Added lazy thumbnail loading and a no-referrer image policy so arbitrary
+  thumbnail hosts do not receive the application page URL.
+
 ## 2026-06-10
 
 - Added a 10-second photo request timeout that aborts when supported, renders

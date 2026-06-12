@@ -217,7 +217,12 @@ class Photos extends React.Component {
             <article className="card" key={photo.id}>
               <div className="card-body">
                 <h2 className="card-title">{photo.title}</h2>
-                <img src={photo.thumbnailUrl} alt={photo.title} />
+                <img
+                  src={photo.thumbnailUrl}
+                  alt={photo.title}
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                />
               </div>
             </article>
           ))}

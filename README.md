@@ -97,6 +97,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - Thumbnail URLs must parse as HTTPS URLs before the app renders image elements.
 - Thumbnail URLs with embedded credentials are rejected before image elements
   are rendered.
+- Thumbnails load lazily with a no-referrer policy so arbitrary image hosts do
+  not receive the application page URL.
 - Accepted photo titles and thumbnail URLs are normalized before they are used
   in headings, alt text, and image sources.
 - Photo IDs must be unique after React key coercion before cards are rendered.

@@ -67,6 +67,16 @@ test('loads and renders photos from the placeholder API', async () => {
   );
 });
 
+test('loads thumbnails lazily without sending a referrer', async () => {
+  mockFetchSuccess();
+
+  render(<Photos />);
+
+  const image = await screen.findByAltText('First photo');
+  expect(image).toHaveAttribute('loading', 'lazy');
+  expect(image).toHaveAttribute('referrerpolicy', 'no-referrer');
+});
+
 test('renders an error state when the photo request fails', async () => {
   global.fetch = vi.fn().mockRejectedValue(new Error('network failed'));
 
