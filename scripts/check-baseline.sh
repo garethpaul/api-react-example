@@ -19,7 +19,6 @@ PHOTO_TIMEOUT_PLAN="$ROOT_DIR/docs/plans/2026-06-10-photo-request-timeout.md"
 REQUEST_OWNERSHIP_PLAN="$ROOT_DIR/docs/plans/2026-06-10-photo-request-ownership.md"
 THUMBNAIL_REFERRER_PLAN="$ROOT_DIR/docs/plans/2026-06-12-photo-thumbnail-referrer-privacy.md"
 WORKFLOW="$ROOT_DIR/.github/workflows/check.yml"
-CODEQL_WORKFLOW="$ROOT_DIR/.github/workflows/codeql.yml"
 CODEQL_PLAN="$ROOT_DIR/docs/plans/2026-06-12-codeql-baseline.md"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
@@ -142,7 +141,6 @@ for required_file in \
   "eslint.config.js" \
   ".prettierrc.json" \
   ".github/workflows/check.yml" \
-  ".github/workflows/codeql.yml" \
   "docs/plans/2026-06-10-vite-toolchain-migration.md"; do
   if [ ! -f "$ROOT_DIR/$required_file" ]; then
     printf '%s\n' "Required modern toolchain file is missing: $required_file" >&2
@@ -175,60 +173,21 @@ for workflow_contract in \
   fi
 done
 
-workflow_paths=$(find "$ROOT_DIR/.github/workflows" -type f \( -name '*.yml' -o -name '*.yaml' \) -print | LC_ALL=C sort)
-expected_workflow_paths=$(printf '%s\n' "$WORKFLOW" "$CODEQL_WORKFLOW" | LC_ALL=C sort)
-if [ "$workflow_paths" != "$expected_workflow_paths" ]; then
-  printf '%s\n' "Only the canonical Check and CodeQL workflows are allowed." >&2
+if find "$ROOT_DIR/.github/workflows" -type f \( -name '*codeql*.yml' -o -name '*codeql*.yaml' \) -print -quit | grep -q .; then
+  printf '%s\n' "GitHub default CodeQL setup must not be duplicated by an advanced workflow." >&2
   exit 1
 fi
 
-if grep -E '^[[:space:]]*(-[[:space:]]+)?uses:' "$WORKFLOW" "$CODEQL_WORKFLOW" | \
+workflow_paths=$(find "$ROOT_DIR/.github/workflows" -type f \( -name '*.yml' -o -name '*.yaml' \) -print | LC_ALL=C sort)
+expected_workflow_paths=$WORKFLOW
+if [ "$workflow_paths" != "$expected_workflow_paths" ]; then
+  printf '%s\n' "Only the canonical Check workflow is allowed." >&2
+  exit 1
+fi
+
+if grep -E '^[[:space:]]*(-[[:space:]]+)?uses:' "$WORKFLOW" | \
    grep -Ev '@[0-9a-f]{40}([[:space:]]+#.*)?$' >/dev/null; then
   printf '%s\n' "GitHub Actions must use immutable commit SHAs." >&2
-  exit 1
-fi
-
-for codeql_contract in \
-  "push:" \
-  "- master" \
-  "pull_request:" \
-  "schedule:" \
-  "cron: '29 5 * * 2'" \
-  "workflow_dispatch:" \
-  "contents: read" \
-  "security-events: write" \
-  'group: codeql-${{ github.workflow }}-${{ github.ref }}' \
-  "cancel-in-progress: true" \
-  "runs-on: ubuntu-24.04" \
-  "timeout-minutes: 10" \
-  "fail-fast: false" \
-  "language: [actions, javascript-typescript]" \
-  "actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10" \
-  "persist-credentials: false" \
-  "github/codeql-action/init@8aad20d150bbac5944a9f9d289da16a4b0d87c1e" \
-  'languages: ${{ matrix.language }}' \
-  "build-mode: none" \
-  "github/codeql-action/analyze@8aad20d150bbac5944a9f9d289da16a4b0d87c1e"; do
-  if ! grep -Fq -- "$codeql_contract" "$CODEQL_WORKFLOW"; then
-    printf '%s\n' "CodeQL workflow must keep contract: $codeql_contract" >&2
-    exit 1
-  fi
-done
-
-codeql_permissions=$(awk '
-  /^permissions:$/ { capture = 1; next }
-  capture && /^  [a-z-]+:/ { print; next }
-  capture { exit }
-' "$CODEQL_WORKFLOW")
-expected_codeql_permissions=$(printf '%s\n' '  contents: read' '  security-events: write')
-if [ "$(grep -Ec '^[[:space:]]*permissions:' "$CODEQL_WORKFLOW")" -ne 1 ] || \
-   [ "$codeql_permissions" != "$expected_codeql_permissions" ]; then
-  printf '%s\n' "CodeQL permissions must be limited to read-only contents and security result upload." >&2
-  exit 1
-fi
-
-if grep -Eq 'continue-on-error:[[:space:]]*true|if:[[:space:]]*false|run:' "$CODEQL_WORKFLOW"; then
-  printf '%s\n' "CodeQL must use only the reviewed action pipeline without bypasses or shell steps." >&2
   exit 1
 fi
 
@@ -236,15 +195,17 @@ if [ ! -f "$CODEQL_PLAN" ] || \
    ! grep -Fq "status: completed" "$CODEQL_PLAN" || \
    ! grep -Fq "make check" "$CODEQL_PLAN" || \
    ! grep -Fq "external working directory" "$CODEQL_PLAN" || \
-   ! grep -Fq "hostile mutations rejected" "$CODEQL_PLAN"; then
+   ! grep -Fq "hostile mutations rejected" "$CODEQL_PLAN" || \
+   ! grep -Fq "default setup" "$CODEQL_PLAN" || \
+   ! grep -Fq "advanced CodeQL workflow" "$CODEQL_PLAN"; then
   printf '%s\n' "CodeQL plan must record completed local verification." >&2
   exit 1
 fi
 
-if ! grep -Fq "CodeQL analyzes" "$README" || \
-   ! grep -Fq "CodeQL results" "$ROOT_DIR/SECURITY.md" || \
-   ! grep -Fq "CodeQL coverage" "$ROOT_DIR/VISION.md" || \
-   ! grep -Fq "CodeQL analysis" "$ROOT_DIR/CHANGES.md"; then
+if ! grep -Fq "CodeQL default setup analyzes" "$README" || \
+   ! grep -Fq "CodeQL default-setup results" "$ROOT_DIR/SECURITY.md" || \
+   ! grep -Fq "CodeQL default-setup coverage" "$ROOT_DIR/VISION.md" || \
+   ! grep -Fq "CodeQL default setup" "$ROOT_DIR/CHANGES.md"; then
   printf '%s\n' "Repository guidance must document the CodeQL trust boundary." >&2
   exit 1
 fi

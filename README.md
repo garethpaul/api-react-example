@@ -76,9 +76,10 @@ corepack yarn verify
 GitHub Actions performs the frozen Yarn install and runs the same `make check`
 gate on Node 20, 22, and 24 for pull requests, pushes to `master`, and manual
 maintenance runs. The workflow uses Ubuntu 24.04 and cancels superseded runs.
-CodeQL analyzes both the GitHub Actions and JavaScript/TypeScript surfaces on
-pushes, pull requests, scheduled runs, and manual dispatches with pinned
-actions and bounded read-only jobs.
+GitHub CodeQL default setup analyzes both the GitHub Actions and
+JavaScript/TypeScript surfaces. That repository setting is intentionally not
+duplicated by an advanced in-repository workflow because GitHub rejects both
+configuration modes running together.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
