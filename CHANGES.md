@@ -2,6 +2,8 @@
 
 ## 2026-06-12
 
+- Added pinned CodeQL analysis for GitHub Actions and JavaScript/TypeScript with
+  least-privilege result upload and repository-enforced workflow contracts.
 - Added lazy thumbnail loading and a no-referrer image policy so arbitrary
   thumbnail hosts do not receive the application page URL.
 
