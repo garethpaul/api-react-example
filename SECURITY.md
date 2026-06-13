@@ -32,7 +32,8 @@ Helpful reports include:
   the existing lint, test, build, or request-boundary gates.
 - Review found file, document, data, or media parsing flows; changes in those areas should receive security-focused review before merge.
 - The 2 MiB photo response body limit bounds raw bytes before strict UTF-8 JSON
-  decoding; streamed overflow cancels and releases the response reader.
+  decoding; a contiguous bounded buffer avoids fragmentation-driven object
+  amplification, and streamed overflow cancels and releases the reader.
 - Review found database, model, query, or persistence-related code; changes in those areas should receive security-focused review before merge.
 - Dependency manifests detected: package.json, yarn.lock. Dependency updates should preserve lockfiles when present and avoid introducing packages without a clear maintenance reason.
 

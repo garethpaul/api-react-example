@@ -2,6 +2,8 @@
 
 ## 2026-06-13
 
+- Replaced per-chunk photo stream retention with one contiguous bounded buffer,
+  preserving exact-limit parsing and overflow cancellation.
 - Added a 2 MiB photo response body limit with streamed cancellation, fallback
   byte checks, and strict UTF-8 decoding before JSON parsing.
 - Required successful photo responses to declare `application/json` or an

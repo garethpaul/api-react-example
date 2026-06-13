@@ -232,6 +232,17 @@ test('releases a streamed photo reader after successful parsing', async () => {
   expect(reader.releaseLock).toHaveBeenCalledTimes(1);
 });
 
+test('parses a valid photo response split into one-byte stream chunks', async () => {
+  const json = JSON.stringify(photos);
+  const chunks = Array.from(utf8.encode(json), (byte) => Uint8Array.of(byte));
+  const { response, reader } = streamingJsonResponse(chunks);
+
+  await expect(readBoundedPhotoJson(response)).resolves.toEqual(photos);
+  expect(reader.read).toHaveBeenCalledTimes(chunks.length + 1);
+  expect(reader.cancel).not.toHaveBeenCalled();
+  expect(reader.releaseLock).toHaveBeenCalledTimes(1);
+});
+
 test('rejects an oversized photo response through the array buffer fallback', async () => {
   const response = {
     headers: jsonHeaders('application/json', String(MAX_PHOTO_RESPONSE_BYTES)),

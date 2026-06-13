@@ -22,6 +22,7 @@ WORKFLOW="$ROOT_DIR/.github/workflows/check.yml"
 CODEQL_PLAN="$ROOT_DIR/docs/plans/2026-06-12-codeql-baseline.md"
 CONTENT_TYPE_PLAN="$ROOT_DIR/docs/plans/2026-06-13-photo-response-content-type.md"
 RESPONSE_BODY_LIMIT_PLAN="$ROOT_DIR/docs/plans/2026-06-13-photo-response-body-limit.md"
+STREAM_BUFFER_PLAN="$ROOT_DIR/docs/plans/2026-06-13-photo-stream-buffer-bound.md"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
   printf '%s\n' "CHANGES.md must document repository maintenance." >&2
@@ -496,7 +497,7 @@ for response_body_contract in \
   "response.headers?.get('content-length')" \
   "new TextDecoder('utf-8', { fatal: true })" \
   "response.body?.getReader" \
-  "receivedBytes > MAX_PHOTO_RESPONSE_BYTES" \
+  "chunk.byteLength > MAX_PHOTO_RESPONSE_BYTES - receivedBytes" \
   "await reader.cancel()" \
   "reader.releaseLock()" \
   "contentLength === null || typeof response.arrayBuffer !== 'function'" \
@@ -507,6 +508,23 @@ for response_body_contract in \
   fi
 done
 
+for stream_buffer_contract in \
+  "const bytes = new Uint8Array(MAX_PHOTO_RESPONSE_BYTES)" \
+  "bytes.set(chunk, receivedBytes)" \
+  "receivedBytes += chunk.byteLength" \
+  "bytes.subarray(0, receivedBytes)"; do
+  if ! grep -Fq "$stream_buffer_contract" "$PHOTOS"; then
+    printf '%s\n' "Missing contiguous photo stream buffer contract: $stream_buffer_contract" >&2
+    exit 1
+  fi
+done
+if grep -Fq "const chunks = []" "$PHOTOS" || \
+   grep -Fq "chunks.push(chunk)" "$PHOTOS" || \
+   grep -Fq "chunks.forEach" "$PHOTOS"; then
+  printf '%s\n' "Photo stream reads must not retain attacker-controlled chunk arrays." >&2
+  exit 1
+fi
+
 if grep -Fq "response.json()" "$PHOTOS" || grep -Fq "response.text()" "$PHOTOS"; then
   printf '%s\n' "Photo JSON must pass through authoritative bounded byte decoding." >&2
   exit 1
@@ -516,6 +534,7 @@ for response_body_test in \
   "rejects a declared oversized photo response before reading" \
   "cancels a streamed photo response when its byte limit is crossed" \
   "releases a streamed photo reader after successful parsing" \
+  "parses a valid photo response split into one-byte stream chunks" \
   "rejects an oversized photo response through the array buffer fallback" \
   "rejects malformed UTF-8 photo response bytes" \
   "accepts valid JSON exactly at the photo response byte limit"; do
@@ -524,6 +543,12 @@ for response_body_test in \
     exit 1
   fi
 done
+
+if ! grep -Fq "expect(reader.read).toHaveBeenCalledTimes(chunks.length + 1)" "$APP_TEST" || \
+   ! grep -Fq "Array.from(utf8.encode(json), (byte)" "$APP_TEST"; then
+  printf '%s\n' "Photo stream tests must exercise high-fragmentation one-byte chunks." >&2
+  exit 1
+fi
 
 if [ ! -f "$RESPONSE_BODY_LIMIT_PLAN" ] || \
    ! grep -Fq "status: completed" "$RESPONSE_BODY_LIMIT_PLAN" || \
@@ -539,6 +564,24 @@ for response_body_doc in "$ROOT_DIR/AGENTS.md" "$README" "$ROOT_DIR/SECURITY.md"
   if ! tr '\n' ' ' < "$response_body_doc" | tr -s '[:space:]' ' ' | \
       grep -Fiq "2 MiB photo response body limit"; then
     printf '%s\n' "$response_body_doc must document the 2 MiB photo response body limit." >&2
+    exit 1
+  fi
+done
+
+if [ ! -f "$STREAM_BUFFER_PLAN" ] || \
+   ! grep -Fq "Status: Completed" "$STREAM_BUFFER_PLAN" || \
+   ! grep -Fq "Verification: Completed" "$STREAM_BUFFER_PLAN" || \
+   ! grep -Fq "Nine focused hostile mutations" "$STREAM_BUFFER_PLAN" || \
+   ! grep -Fq "yarn verify" "$STREAM_BUFFER_PLAN"; then
+  printf '%s\n' "Photo stream buffer plan must record completed verification." >&2
+  exit 1
+fi
+
+for stream_buffer_doc in "$ROOT_DIR/AGENTS.md" "$README" "$ROOT_DIR/SECURITY.md" \
+  "$ROOT_DIR/VISION.md" "$ROOT_DIR/CHANGES.md"; do
+  if ! tr '\n' ' ' < "$stream_buffer_doc" | tr -s '[:space:]' ' ' | \
+      grep -Fiq "contiguous bounded buffer"; then
+    printf '%s\n' "$stream_buffer_doc must document contiguous bounded buffer handling." >&2
     exit 1
   fi
 done
