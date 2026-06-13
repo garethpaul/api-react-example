@@ -3,6 +3,7 @@ import React from 'react';
 export const PHOTO_ENDPOINT = 'https://jsonplaceholder.typicode.com/photos';
 export const MAX_PHOTOS = 12;
 export const PHOTO_REQUEST_TIMEOUT_MS = 10000;
+export const MAX_PHOTO_RESPONSE_BYTES = 2 * 1024 * 1024;
 
 function hasText(value) {
   return typeof value === 'string' && value.trim().length > 0;
@@ -53,6 +54,87 @@ export function isJsonContentType(value) {
     mediaType === 'application/json' ||
     /^application\/[!#$%&'*+.^_`|~0-9a-z-]+\+json$/.test(mediaType)
   );
+}
+
+function parseContentLength(value) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const normalizedValue = String(value).trim();
+  if (!/^\d+$/.test(normalizedValue)) {
+    throw new Error('Photo response Content-Length must be numeric.');
+  }
+
+  const length = Number(normalizedValue);
+  if (!Number.isSafeInteger(length)) {
+    throw new Error('Photo response Content-Length is outside the safe range.');
+  }
+  return length;
+}
+
+function parsePhotoJsonBytes(bytes) {
+  if (bytes.byteLength > MAX_PHOTO_RESPONSE_BYTES) {
+    throw new Error('Photo response body is too large.');
+  }
+
+  const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  return JSON.parse(text);
+}
+
+async function readPhotoStream(body) {
+  const reader = body.getReader();
+  const chunks = [];
+  let receivedBytes = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+
+      const chunk = value instanceof Uint8Array ? value : new Uint8Array(value);
+      receivedBytes += chunk.byteLength;
+      if (receivedBytes > MAX_PHOTO_RESPONSE_BYTES) {
+        try {
+          await reader.cancel();
+        } catch {
+          // Preserve the deterministic overflow error if cancellation also fails.
+        }
+        throw new Error('Photo response body is too large.');
+      }
+      chunks.push(chunk);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const bytes = new Uint8Array(receivedBytes);
+  let offset = 0;
+  chunks.forEach((chunk) => {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  });
+  return parsePhotoJsonBytes(bytes);
+}
+
+export async function readBoundedPhotoJson(response) {
+  const contentLength = parseContentLength(
+    response.headers?.get('content-length'),
+  );
+  if (contentLength !== null && contentLength > MAX_PHOTO_RESPONSE_BYTES) {
+    throw new Error('Photo response body is too large.');
+  }
+
+  if (response.body?.getReader) {
+    return readPhotoStream(response.body);
+  }
+
+  if (contentLength === null || typeof response.arrayBuffer !== 'function') {
+    throw new Error('Photo response body is unavailable.');
+  }
+  return parsePhotoJsonBytes(new Uint8Array(await response.arrayBuffer()));
 }
 
 export function isRenderablePhoto(photo) {
@@ -194,7 +276,7 @@ class Photos extends React.Component {
       throw new Error('Photo response must use a JSON content type.');
     }
 
-    return normalizePhotos(await response.json());
+    return normalizePhotos(await readBoundedPhotoJson(response));
   }
 
   async loadPhotos() {

@@ -100,6 +100,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   error state instead of creating broken cards.
 - Successful photo responses must declare an application JSON media type before
   the response body is parsed; missing, HTML, and other non-JSON types fail closed.
+- A 2 MiB photo response body limit is enforced on raw streamed or fallback
+  bytes before strict UTF-8 decoding and JSON parsing.
 - Thumbnail URLs must parse as HTTPS URLs before the app renders image elements.
 - Thumbnail URLs with embedded credentials are rejected before image elements
   are rendered.
