@@ -403,6 +403,83 @@ test('times out while parsing photos without abort support', async () => {
   expect(screen.getByRole('alert')).toHaveTextContent('Unable to load photos.');
 });
 
+test('cancels a pending photo stream on timeout without abort support', async () => {
+  vi.useFakeTimers();
+  global.AbortController = undefined;
+  let finishRead;
+  const read = vi.fn(
+    () =>
+      new Promise((resolve) => {
+        finishRead = resolve;
+      }),
+  );
+  const cancel = vi.fn().mockImplementation(() => {
+    finishRead({ done: true });
+    return Promise.resolve();
+  });
+  const releaseLock = vi.fn();
+  global.fetch = vi.fn().mockResolvedValue({
+    ok: true,
+    headers: jsonHeaders('application/json'),
+    body: {
+      getReader: vi.fn(() => ({ read, cancel, releaseLock })),
+    },
+  });
+
+  render(<Photos />);
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+  expect(read).toHaveBeenCalledTimes(1);
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(PHOTO_REQUEST_TIMEOUT_MS);
+  });
+
+  expect(cancel).toHaveBeenCalledTimes(1);
+  expect(releaseLock).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole('alert')).toHaveTextContent('Unable to load photos.');
+});
+
+test('cancels a pending photo stream on unmount without abort support', async () => {
+  global.AbortController = undefined;
+  let finishRead;
+  const read = vi.fn(
+    () =>
+      new Promise((resolve) => {
+        finishRead = resolve;
+      }),
+  );
+  const cancel = vi.fn().mockImplementation(() => {
+    finishRead({ done: true });
+    return Promise.resolve();
+  });
+  const releaseLock = vi.fn();
+  global.fetch = vi.fn().mockResolvedValue({
+    ok: true,
+    headers: jsonHeaders('application/json'),
+    body: {
+      getReader: vi.fn(() => ({ read, cancel, releaseLock })),
+    },
+  });
+
+  const { unmount } = render(<Photos />);
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+  expect(read).toHaveBeenCalledTimes(1);
+
+  unmount();
+  await act(async () => {
+    await Promise.resolve();
+  });
+
+  expect(cancel).toHaveBeenCalledTimes(1);
+  expect(releaseLock).toHaveBeenCalledTimes(1);
+});
+
 test('renders an error state when the photo response is not an array', async () => {
   mockFetchSuccess({ unexpected: true });
 

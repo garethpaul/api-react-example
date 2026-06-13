@@ -23,6 +23,7 @@ CODEQL_PLAN="$ROOT_DIR/docs/plans/2026-06-12-codeql-baseline.md"
 CONTENT_TYPE_PLAN="$ROOT_DIR/docs/plans/2026-06-13-photo-response-content-type.md"
 RESPONSE_BODY_LIMIT_PLAN="$ROOT_DIR/docs/plans/2026-06-13-photo-response-body-limit.md"
 STREAM_BUFFER_PLAN="$ROOT_DIR/docs/plans/2026-06-13-photo-stream-buffer-bound.md"
+STREAM_TIMEOUT_PLAN="$ROOT_DIR/docs/plans/2026-06-13-photo-stream-timeout-cancellation.md"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
   printf '%s\n' "CHANGES.md must document repository maintenance." >&2
@@ -287,8 +288,9 @@ for timeout_contract in \
   "request.abortController.abort()" \
   "reject(new Error('Photo request timed out.'))" \
   "Promise.race([" \
-  "async fetchPhotos(requestOptions)" \
-  "const photoRequest = this.fetchPhotos(requestOptions)" \
+  "async fetchPhotos(request)" \
+  "const requestOptions = this.createPhotoRequestOptions(request)" \
+  "const photoRequest = this.fetchPhotos(request)" \
   "clearPhotoRequestTimeout(request)" \
   "clearTimeout(request.timeoutId)"; do
   if ! grep -Fq "$timeout_contract" "$PHOTOS"; then
@@ -297,7 +299,7 @@ for timeout_contract in \
   fi
 done
 
-if grep -Fq "const photoRequest = await this.fetchPhotos(requestOptions)" "$PHOTOS"; then
+if grep -Fq "const photoRequest = await this.fetchPhotos(request)" "$PHOTOS"; then
   printf '%s\n' "Photo operation must start without awaiting before the timeout race." >&2
   exit 1
 fi
@@ -483,7 +485,7 @@ done
 
 status_check_line=$(grep -nF "if (!response.ok)" "$PHOTOS" | cut -d: -f1)
 content_type_line=$(grep -nF "const contentType = response.headers?.get('content-type')" "$PHOTOS" | cut -d: -f1)
-json_parse_line=$(grep -nF "return normalizePhotos(await readBoundedPhotoJson(response))" "$PHOTOS" | cut -d: -f1)
+json_parse_line=$(grep -nF "await readBoundedPhotoJson(response" "$PHOTOS" | cut -d: -f1)
 if [ -z "$status_check_line" ] || [ -z "$content_type_line" ] || \
    [ -z "$json_parse_line" ] || [ "$status_check_line" -ge "$content_type_line" ] || \
    [ "$content_type_line" -ge "$json_parse_line" ]; then
@@ -493,7 +495,7 @@ fi
 
 for response_body_contract in \
   "export const MAX_PHOTO_RESPONSE_BYTES = 2 * 1024 * 1024" \
-  "export async function readBoundedPhotoJson(response)" \
+  "export async function readBoundedPhotoJson(response, setReaderCancel = null)" \
   "response.headers?.get('content-length')" \
   "new TextDecoder('utf-8', { fatal: true })" \
   "response.body?.getReader" \
@@ -582,6 +584,47 @@ for stream_buffer_doc in "$ROOT_DIR/AGENTS.md" "$README" "$ROOT_DIR/SECURITY.md"
   if ! tr '\n' ' ' < "$stream_buffer_doc" | tr -s '[:space:]' ' ' | \
       grep -Fiq "contiguous bounded buffer"; then
     printf '%s\n' "$stream_buffer_doc must document contiguous bounded buffer handling." >&2
+    exit 1
+  fi
+done
+
+for stream_timeout_contract in \
+  "cancelResponseBody: null" \
+  "this.cancelPhotoResponseBody(request)" \
+  "return readPhotoStream(response.body, setReaderCancel)" \
+  "request.cancelResponseBody = cancelResponseBody"; do
+  if ! grep -Fq "$stream_timeout_contract" "$PHOTOS"; then
+    printf '%s\n' "Missing timed-out stream cancellation contract: $stream_timeout_contract" >&2
+    exit 1
+  fi
+done
+
+if [ "$(grep -Fc "this.cancelPhotoResponseBody(request)" "$PHOTOS")" -ne 2 ]; then
+  printf '%s\n' "Photo response readers must be cancelled on timeout and active-request cleanup." >&2
+  exit 1
+fi
+
+if ! grep -Fq "cancels a pending photo stream on timeout without abort support" "$APP_TEST" || \
+   ! grep -Fq "cancels a pending photo stream on unmount without abort support" "$APP_TEST" || \
+   ! grep -Fq "expect(releaseLock).toHaveBeenCalledTimes(1)" "$APP_TEST"; then
+  printf '%s\n' "Tests must cover reader cancellation and lock release without AbortController." >&2
+  exit 1
+fi
+
+if [ ! -f "$STREAM_TIMEOUT_PLAN" ] || \
+   ! grep -Fq "Status: Completed" "$STREAM_TIMEOUT_PLAN" || \
+   ! grep -Fq "Verification: Completed" "$STREAM_TIMEOUT_PLAN" || \
+   ! grep -Fq "focused hostile mutations" "$STREAM_TIMEOUT_PLAN" || \
+   ! grep -Fq "make check" "$STREAM_TIMEOUT_PLAN"; then
+  printf '%s\n' "Photo stream timeout cancellation plan must record completed verification." >&2
+  exit 1
+fi
+
+for stream_timeout_doc in "$ROOT_DIR/AGENTS.md" "$README" "$ROOT_DIR/SECURITY.md" \
+  "$ROOT_DIR/VISION.md" "$ROOT_DIR/CHANGES.md"; do
+  if ! tr '\n' ' ' < "$stream_timeout_doc" | tr -s '[:space:]' ' ' | \
+      grep -Fiq "cancel pending response readers"; then
+    printf '%s\n' "$stream_timeout_doc must document timed-out response reader cancellation." >&2
     exit 1
   fi
 done
