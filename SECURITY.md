@@ -31,6 +31,8 @@ Helpful reports include:
   JavaScript/TypeScript surfaces; findings should be triaged without weakening
   the existing lint, test, build, or request-boundary gates.
 - Review found file, document, data, or media parsing flows; changes in those areas should receive security-focused review before merge.
+- The 2 MiB photo response body limit bounds raw bytes before strict UTF-8 JSON
+  decoding; streamed overflow cancels and releases the response reader.
 - Review found database, model, query, or persistence-related code; changes in those areas should receive security-focused review before merge.
 - Dependency manifests detected: package.json, yarn.lock. Dependency updates should preserve lockfiles when present and avoid introducing packages without a clear maintenance reason.
 

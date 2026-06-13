@@ -3,9 +3,11 @@ import { vi } from 'vitest';
 import App from './App';
 import Photos, {
   isJsonContentType,
+  MAX_PHOTO_RESPONSE_BYTES,
   MAX_PHOTOS,
   PHOTO_ENDPOINT,
   PHOTO_REQUEST_TIMEOUT_MS,
+  readBoundedPhotoJson,
 } from './components/Photos';
 
 const photos = [
@@ -22,20 +24,56 @@ const photos = [
 ];
 const originalAbortController = global.AbortController;
 
-function jsonHeaders(contentType = 'application/json; charset=utf-8') {
+const utf8 = new TextEncoder();
+
+function jsonHeaders(
+  contentType = 'application/json; charset=utf-8',
+  contentLength = null,
+) {
   return {
-    get: vi.fn((name) =>
-      name.toLowerCase() === 'content-type' ? contentType : null,
-    ),
+    get: vi.fn((name) => {
+      const normalizedName = name.toLowerCase();
+      if (normalizedName === 'content-type') {
+        return contentType;
+      }
+      if (normalizedName === 'content-length') {
+        return contentLength;
+      }
+      return null;
+    }),
   };
 }
 
 function mockFetchSuccess(data = photos) {
+  const bytes = utf8.encode(JSON.stringify(data));
   global.fetch = vi.fn().mockResolvedValue({
     ok: true,
-    headers: jsonHeaders(),
-    json: vi.fn().mockResolvedValue(data),
+    headers: jsonHeaders(
+      'application/json; charset=utf-8',
+      String(bytes.byteLength),
+    ),
+    arrayBuffer: vi.fn().mockResolvedValue(bytes.buffer),
   });
+}
+
+function streamingJsonResponse(chunks, contentLength = null) {
+  const read = vi.fn();
+  chunks.forEach((chunk) => {
+    read.mockResolvedValueOnce({ done: false, value: chunk });
+  });
+  read.mockResolvedValueOnce({ done: true, value: undefined });
+  const reader = {
+    read,
+    cancel: vi.fn().mockResolvedValue(undefined),
+    releaseLock: vi.fn(),
+  };
+  return {
+    response: {
+      headers: jsonHeaders('application/json', contentLength),
+      body: { getReader: vi.fn(() => reader) },
+    },
+    reader,
+  };
 }
 
 afterEach(() => {
@@ -123,11 +161,11 @@ test('recognizes explicit JSON response media types', () => {
 });
 
 test('rejects a successful photo response without a content type', async () => {
-  const json = vi.fn().mockResolvedValue(photos);
+  const arrayBuffer = vi.fn();
   global.fetch = vi.fn().mockResolvedValue({
     ok: true,
     headers: jsonHeaders(null),
-    json,
+    arrayBuffer,
   });
 
   render(<Photos />);
@@ -135,15 +173,15 @@ test('rejects a successful photo response without a content type', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent(
     'Unable to load photos.',
   );
-  expect(json).not.toHaveBeenCalled();
+  expect(arrayBuffer).not.toHaveBeenCalled();
 });
 
 test('rejects a successful non-JSON photo response before parsing', async () => {
-  const json = vi.fn().mockResolvedValue(photos);
+  const arrayBuffer = vi.fn();
   global.fetch = vi.fn().mockResolvedValue({
     ok: true,
     headers: jsonHeaders('text/html; charset=utf-8'),
-    json,
+    arrayBuffer,
   });
 
   render(<Photos />);
@@ -151,31 +189,105 @@ test('rejects a successful non-JSON photo response before parsing', async () => 
   expect(await screen.findByRole('alert')).toHaveTextContent(
     'Unable to load photos.',
   );
-  expect(json).not.toHaveBeenCalled();
+  expect(arrayBuffer).not.toHaveBeenCalled();
+});
+
+test('rejects a declared oversized photo response before reading', async () => {
+  const arrayBuffer = vi.fn();
+  const response = {
+    headers: jsonHeaders(
+      'application/json',
+      String(MAX_PHOTO_RESPONSE_BYTES + 1),
+    ),
+    arrayBuffer,
+  };
+
+  await expect(readBoundedPhotoJson(response)).rejects.toThrow(
+    'Photo response body is too large.',
+  );
+  expect(arrayBuffer).not.toHaveBeenCalled();
+});
+
+test('cancels a streamed photo response when its byte limit is crossed', async () => {
+  const { response, reader } = streamingJsonResponse([
+    new Uint8Array(MAX_PHOTO_RESPONSE_BYTES),
+    new Uint8Array(1),
+  ]);
+
+  await expect(readBoundedPhotoJson(response)).rejects.toThrow(
+    'Photo response body is too large.',
+  );
+  expect(reader.cancel).toHaveBeenCalledTimes(1);
+  expect(reader.releaseLock).toHaveBeenCalledTimes(1);
+});
+
+test('releases a streamed photo reader after successful parsing', async () => {
+  const { response, reader } = streamingJsonResponse([
+    utf8.encode('['),
+    utf8.encode(']'),
+  ]);
+
+  await expect(readBoundedPhotoJson(response)).resolves.toEqual([]);
+  expect(reader.cancel).not.toHaveBeenCalled();
+  expect(reader.releaseLock).toHaveBeenCalledTimes(1);
+});
+
+test('rejects an oversized photo response through the array buffer fallback', async () => {
+  const response = {
+    headers: jsonHeaders('application/json', String(MAX_PHOTO_RESPONSE_BYTES)),
+    arrayBuffer: vi
+      .fn()
+      .mockResolvedValue(new Uint8Array(MAX_PHOTO_RESPONSE_BYTES + 1).buffer),
+  };
+
+  await expect(readBoundedPhotoJson(response)).rejects.toThrow(
+    'Photo response body is too large.',
+  );
+});
+
+test('rejects malformed UTF-8 photo response bytes', async () => {
+  const response = {
+    headers: jsonHeaders('application/json', '1'),
+    arrayBuffer: vi.fn().mockResolvedValue(new Uint8Array([0x80]).buffer),
+  };
+
+  await expect(readBoundedPhotoJson(response)).rejects.toThrow(TypeError);
+});
+
+test('accepts valid JSON exactly at the photo response byte limit', async () => {
+  const json = `${' '.repeat(MAX_PHOTO_RESPONSE_BYTES - 2)}[]`;
+  const bytes = utf8.encode(json);
+  const response = {
+    headers: jsonHeaders('application/json', String(bytes.byteLength)),
+    arrayBuffer: vi.fn().mockResolvedValue(bytes.buffer),
+  };
+
+  expect(bytes.byteLength).toBe(MAX_PHOTO_RESPONSE_BYTES);
+  await expect(readBoundedPhotoJson(response)).resolves.toEqual([]);
 });
 
 test('does not update state after unmounting during photo load', async () => {
-  let resolveJson;
-  const json = vi.fn(
+  let resolveBody;
+  const arrayBuffer = vi.fn(
     () =>
       new Promise((resolve) => {
-        resolveJson = resolve;
+        resolveBody = resolve;
       }),
   );
   global.fetch = vi.fn().mockResolvedValue({
     ok: true,
-    headers: jsonHeaders(),
-    json,
+    headers: jsonHeaders('application/json', '2'),
+    arrayBuffer,
   });
   const setStateSpy = vi.spyOn(Photos.prototype, 'setState');
 
   const { unmount } = render(<Photos />);
 
-  await waitFor(() => expect(json).toHaveBeenCalled());
+  await waitFor(() => expect(arrayBuffer).toHaveBeenCalled());
   unmount();
 
   await act(async () => {
-    resolveJson(photos);
+    resolveBody(utf8.encode(JSON.stringify(photos)).buffer);
   });
 
   expect(setStateSpy).not.toHaveBeenCalled();
@@ -211,8 +323,13 @@ test('ignores a superseded request after the same instance remounts', async () =
     )
     .mockResolvedValueOnce({
       ok: true,
-      headers: jsonHeaders(),
-      json: vi.fn().mockResolvedValue(photos),
+      headers: jsonHeaders(
+        'application/json',
+        String(utf8.encode(JSON.stringify(photos)).byteLength),
+      ),
+      arrayBuffer: vi
+        .fn()
+        .mockResolvedValue(utf8.encode(JSON.stringify(photos)).buffer),
     });
   const component = new Photos({});
   component.setState = vi.fn();
@@ -262,8 +379,8 @@ test('times out while parsing photos without abort support', async () => {
   global.AbortController = undefined;
   global.fetch = vi.fn().mockResolvedValue({
     ok: true,
-    headers: jsonHeaders(),
-    json: vi.fn(() => new Promise(() => {})),
+    headers: jsonHeaders('application/json', '2'),
+    arrayBuffer: vi.fn(() => new Promise(() => {})),
   });
 
   render(<Photos />);

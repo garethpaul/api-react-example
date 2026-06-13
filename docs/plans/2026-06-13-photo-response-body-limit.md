@@ -1,13 +1,13 @@
 ---
 title: Photo Response Body Limit
 type: security
-status: planned
+status: completed
 date: 2026-06-13
 ---
 
 # Photo Response Body Limit
 
-## Status: Planned
+## Status: Completed
 
 ## Priority
 
@@ -29,7 +29,7 @@ headroom while establishing a deterministic resource boundary.
 - **R3:** Cancel an active response reader when the limit is crossed and always
   release its lock.
 - **R4:** Support environments without a readable response stream through a
-  bounded `response.text()` fallback.
+  bounded `response.arrayBuffer()` fallback.
 - **R5:** Preserve request timeout/abort ownership, content-type validation,
   photo normalization, the 12-photo display cap, and the generic error UI.
 - **R6:** Add focused tests, fail-closed checker contracts, documentation,
@@ -45,14 +45,15 @@ Add a 2 MiB constant and a response reader that first rejects an oversized
 valid `Content-Length`. When `response.body.getReader()` is available, consume
 chunks while tracking `Uint8Array.byteLength`, cancel on overflow, decode with a
 fatal UTF-8 `TextDecoder`, and parse only after the stream ends. Otherwise read
-text, re-encode it with `TextEncoder` for a byte count, then parse within the
-same limit.
+an `ArrayBuffer`, enforce its authoritative byte length, and use the same strict
+decoder before parsing. A text fallback is intentionally excluded because
+replacement decoding could already have hidden malformed bytes.
 
 ### U2: Cover Streaming And Fallback Boundaries
 
 **File:** `src/App.test.jsx`
 
-Update successful response fixtures to exercise the text fallback. Add focused
+Update successful response fixtures to exercise the array-buffer fallback. Add focused
 tests for a declared oversized body, streamed overflow and cancellation,
 fallback overflow, malformed UTF-8, and an accepted body exactly at the byte
 limit. Preserve existing timeout, content-type, normalization, and rendering
@@ -85,7 +86,7 @@ Document the bounded JSON body contract and record exact validation evidence.
 - A declared `Content-Length` above 2 MiB is rejected before body reading.
 - A streamed body crossing 2 MiB is cancelled and rejected.
 - The stream reader lock is released after success and failure.
-- A non-streaming text response crossing 2 MiB is rejected by encoded bytes.
+- A non-streaming array-buffer response crossing 2 MiB is rejected by raw bytes.
 - Malformed UTF-8 is rejected instead of replacement-decoded.
 - A body exactly at the byte ceiling can be decoded and parsed.
 - Existing timeout, stale-request, unmount, media-type, and record-validation
@@ -102,7 +103,22 @@ Document the bounded JSON body contract and record exact validation evidence.
 
 ## Verification
 
-Pending implementation and execution.
+- The live JSONPlaceholder response measured 1,071,472 bytes before selecting
+  the 2 MiB ceiling.
+- The initial implementation design changed the non-stream fallback from
+  `response.text()` to a declared-length-gated `response.arrayBuffer()` because
+  text decoding could already have replaced malformed bytes.
+- Focused Vitest execution passed all 28 component tests, including declared,
+  streamed, fallback, exact-limit, cleanup, and malformed UTF-8 cases.
+- `make check` passed in an isolated tracked-file copy: baseline contracts,
+  ESLint, Prettier, all 28 tests, and the Vite production build succeeded.
+- Twelve hostile mutations were rejected for limit, comparison, cancellation,
+  lock release, fatal decoding, text fallback, fallback precheck, array-buffer,
+  named test, documentation, and plan-evidence regressions.
+- `make check` then passed from the canonical worktree and through `make -C`
+  from an external working directory.
+- Live browser transport was not exercised; stream/fallback behavior is covered
+  with deterministic response-reader fixtures and production build validation.
 
 ## Sources
 

@@ -21,6 +21,7 @@ THUMBNAIL_REFERRER_PLAN="$ROOT_DIR/docs/plans/2026-06-12-photo-thumbnail-referre
 WORKFLOW="$ROOT_DIR/.github/workflows/check.yml"
 CODEQL_PLAN="$ROOT_DIR/docs/plans/2026-06-12-codeql-baseline.md"
 CONTENT_TYPE_PLAN="$ROOT_DIR/docs/plans/2026-06-13-photo-response-content-type.md"
+RESPONSE_BODY_LIMIT_PLAN="$ROOT_DIR/docs/plans/2026-06-13-photo-response-body-limit.md"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
   printf '%s\n' "CHANGES.md must document repository maintenance." >&2
@@ -481,13 +482,66 @@ done
 
 status_check_line=$(grep -nF "if (!response.ok)" "$PHOTOS" | cut -d: -f1)
 content_type_line=$(grep -nF "const contentType = response.headers?.get('content-type')" "$PHOTOS" | cut -d: -f1)
-json_parse_line=$(grep -nF "return normalizePhotos(await response.json())" "$PHOTOS" | cut -d: -f1)
+json_parse_line=$(grep -nF "return normalizePhotos(await readBoundedPhotoJson(response))" "$PHOTOS" | cut -d: -f1)
 if [ -z "$status_check_line" ] || [ -z "$content_type_line" ] || \
    [ -z "$json_parse_line" ] || [ "$status_check_line" -ge "$content_type_line" ] || \
    [ "$content_type_line" -ge "$json_parse_line" ]; then
   printf '%s\n' "Photo response content type must be validated after status and before JSON parsing." >&2
   exit 1
 fi
+
+for response_body_contract in \
+  "export const MAX_PHOTO_RESPONSE_BYTES = 2 * 1024 * 1024" \
+  "export async function readBoundedPhotoJson(response)" \
+  "response.headers?.get('content-length')" \
+  "new TextDecoder('utf-8', { fatal: true })" \
+  "response.body?.getReader" \
+  "receivedBytes > MAX_PHOTO_RESPONSE_BYTES" \
+  "await reader.cancel()" \
+  "reader.releaseLock()" \
+  "contentLength === null || typeof response.arrayBuffer !== 'function'" \
+  "new Uint8Array(await response.arrayBuffer())"; do
+  if ! grep -Fq "$response_body_contract" "$PHOTOS"; then
+    printf '%s\n' "Missing bounded photo response-body contract: $response_body_contract" >&2
+    exit 1
+  fi
+done
+
+if grep -Fq "response.json()" "$PHOTOS" || grep -Fq "response.text()" "$PHOTOS"; then
+  printf '%s\n' "Photo JSON must pass through authoritative bounded byte decoding." >&2
+  exit 1
+fi
+
+for response_body_test in \
+  "rejects a declared oversized photo response before reading" \
+  "cancels a streamed photo response when its byte limit is crossed" \
+  "releases a streamed photo reader after successful parsing" \
+  "rejects an oversized photo response through the array buffer fallback" \
+  "rejects malformed UTF-8 photo response bytes" \
+  "accepts valid JSON exactly at the photo response byte limit"; do
+  if ! grep -Fq "$response_body_test" "$APP_TEST"; then
+    printf '%s\n' "Missing photo response-body regression test: $response_body_test" >&2
+    exit 1
+  fi
+done
+
+if [ ! -f "$RESPONSE_BODY_LIMIT_PLAN" ] || \
+   ! grep -Fq "status: completed" "$RESPONSE_BODY_LIMIT_PLAN" || \
+   ! grep -Fq "## Status: Completed" "$RESPONSE_BODY_LIMIT_PLAN" || \
+   ! grep -Fq "make check" "$RESPONSE_BODY_LIMIT_PLAN" || \
+   ! grep -Fq "hostile mutations" "$RESPONSE_BODY_LIMIT_PLAN"; then
+  printf '%s\n' "Photo response body limit plan must record completed verification." >&2
+  exit 1
+fi
+
+for response_body_doc in "$ROOT_DIR/AGENTS.md" "$README" "$ROOT_DIR/SECURITY.md" \
+  "$ROOT_DIR/VISION.md" "$ROOT_DIR/CHANGES.md"; do
+  if ! tr '\n' ' ' < "$response_body_doc" | tr -s '[:space:]' ' ' | \
+      grep -Fiq "2 MiB photo response body limit"; then
+    printf '%s\n' "$response_body_doc must document the 2 MiB photo response body limit." >&2
+    exit 1
+  fi
+done
 
 for content_type_test in \
   "recognizes explicit JSON response media types" \

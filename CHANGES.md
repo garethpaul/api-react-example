@@ -2,6 +2,8 @@
 
 ## 2026-06-13
 
+- Added a 2 MiB photo response body limit with streamed cancellation, fallback
+  byte checks, and strict UTF-8 decoding before JSON parsing.
 - Required successful photo responses to declare `application/json` or an
   `application/*+json` media type before body parsing.
 - Added deterministic coverage for missing, HTML, parameterized, and structured
