@@ -1,5 +1,12 @@
 # API React Example Changes
 
+## 2026-06-13
+
+- Required successful photo responses to declare `application/json` or an
+  `application/*+json` media type before body parsing.
+- Added deterministic coverage for missing, HTML, parameterized, and structured
+  suffix JSON content types.
+
 ## 2026-06-12
 
 - Documented the existing GitHub CodeQL default setup for GitHub Actions and

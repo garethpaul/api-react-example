@@ -98,6 +98,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 
 - Photo records are validated before rendering; malformed items use the existing
   error state instead of creating broken cards.
+- Successful photo responses must declare an application JSON media type before
+  the response body is parsed; missing, HTML, and other non-JSON types fail closed.
 - Thumbnail URLs must parse as HTTPS URLs before the app renders image elements.
 - Thumbnail URLs with embedded credentials are rejected before image elements
   are rendered.
@@ -134,6 +136,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   ID type validation baseline.
 - See `docs/plans/2026-06-09-photo-unmount-state-guard.md` for the async unmount
   state-update guard.
+- See `docs/plans/2026-06-13-photo-response-content-type.md` for the successful
+  response media-type validation contract.
 - See `VISION.md` for project direction and contribution guardrails.
 - See `CHANGES.md` for the maintenance history.
 

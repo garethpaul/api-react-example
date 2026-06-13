@@ -20,6 +20,7 @@ Priority:
 - Preserve the `Photos` component as the central API example
 - Keep `yarn start`, `yarn test`, and `yarn build` usable
 - Make network assumptions visible instead of hidden in component code
+- Require successful API responses to identify JSON content before parsing
 - Validate API item shape before rendering photo cards
 - Render only HTTPS thumbnail URLs from the API response
 - Reject thumbnail URLs with embedded credentials before DOM rendering

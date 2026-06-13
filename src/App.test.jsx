@@ -2,6 +2,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
 import App from './App';
 import Photos, {
+  isJsonContentType,
   MAX_PHOTOS,
   PHOTO_ENDPOINT,
   PHOTO_REQUEST_TIMEOUT_MS,
@@ -21,9 +22,18 @@ const photos = [
 ];
 const originalAbortController = global.AbortController;
 
+function jsonHeaders(contentType = 'application/json; charset=utf-8') {
+  return {
+    get: vi.fn((name) =>
+      name.toLowerCase() === 'content-type' ? contentType : null,
+    ),
+  };
+}
+
 function mockFetchSuccess(data = photos) {
   global.fetch = vi.fn().mockResolvedValue({
     ok: true,
+    headers: jsonHeaders(),
     json: vi.fn().mockResolvedValue(data),
   });
 }
@@ -100,6 +110,50 @@ test('renders an error state when the photo request is not ok', async () => {
   );
 });
 
+test('recognizes explicit JSON response media types', () => {
+  expect(isJsonContentType('application/json')).toBe(true);
+  expect(isJsonContentType(' Application/JSON ; Charset=UTF-8 ')).toBe(true);
+  expect(isJsonContentType('application/problem+json')).toBe(true);
+  expect(
+    isJsonContentType('application/vnd.example.photo+json; version=1'),
+  ).toBe(true);
+  expect(isJsonContentType('text/json')).toBe(false);
+  expect(isJsonContentType('application/jsonp')).toBe(false);
+  expect(isJsonContentType(null)).toBe(false);
+});
+
+test('rejects a successful photo response without a content type', async () => {
+  const json = vi.fn().mockResolvedValue(photos);
+  global.fetch = vi.fn().mockResolvedValue({
+    ok: true,
+    headers: jsonHeaders(null),
+    json,
+  });
+
+  render(<Photos />);
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Unable to load photos.',
+  );
+  expect(json).not.toHaveBeenCalled();
+});
+
+test('rejects a successful non-JSON photo response before parsing', async () => {
+  const json = vi.fn().mockResolvedValue(photos);
+  global.fetch = vi.fn().mockResolvedValue({
+    ok: true,
+    headers: jsonHeaders('text/html; charset=utf-8'),
+    json,
+  });
+
+  render(<Photos />);
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Unable to load photos.',
+  );
+  expect(json).not.toHaveBeenCalled();
+});
+
 test('does not update state after unmounting during photo load', async () => {
   let resolveJson;
   const json = vi.fn(
@@ -110,6 +164,7 @@ test('does not update state after unmounting during photo load', async () => {
   );
   global.fetch = vi.fn().mockResolvedValue({
     ok: true,
+    headers: jsonHeaders(),
     json,
   });
   const setStateSpy = vi.spyOn(Photos.prototype, 'setState');
@@ -156,6 +211,7 @@ test('ignores a superseded request after the same instance remounts', async () =
     )
     .mockResolvedValueOnce({
       ok: true,
+      headers: jsonHeaders(),
       json: vi.fn().mockResolvedValue(photos),
     });
   const component = new Photos({});
@@ -206,6 +262,7 @@ test('times out while parsing photos without abort support', async () => {
   global.AbortController = undefined;
   global.fetch = vi.fn().mockResolvedValue({
     ok: true,
+    headers: jsonHeaders(),
     json: vi.fn(() => new Promise(() => {})),
   });
 

@@ -20,6 +20,7 @@ REQUEST_OWNERSHIP_PLAN="$ROOT_DIR/docs/plans/2026-06-10-photo-request-ownership.
 THUMBNAIL_REFERRER_PLAN="$ROOT_DIR/docs/plans/2026-06-12-photo-thumbnail-referrer-privacy.md"
 WORKFLOW="$ROOT_DIR/.github/workflows/check.yml"
 CODEQL_PLAN="$ROOT_DIR/docs/plans/2026-06-12-codeql-baseline.md"
+CONTENT_TYPE_PLAN="$ROOT_DIR/docs/plans/2026-06-13-photo-response-content-type.md"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
   printf '%s\n' "CHANGES.md must document repository maintenance." >&2
@@ -463,6 +464,53 @@ fi
 
 if ! grep -Fq "mockFetchSuccess" "$APP_TEST"; then
   printf '%s\n' "Tests must mock fetch success without network access." >&2
+  exit 1
+fi
+
+for content_type_contract in \
+  "export function isJsonContentType(value)" \
+  "mediaType === 'application/json'" \
+  "\\+json$/.test(mediaType)" \
+  "const contentType = response.headers?.get('content-type')" \
+  "if (!isJsonContentType(contentType))"; do
+  if ! grep -Fq "$content_type_contract" "$PHOTOS"; then
+    printf '%s\n' "Missing photo response content-type contract: $content_type_contract" >&2
+    exit 1
+  fi
+done
+
+status_check_line=$(grep -nF "if (!response.ok)" "$PHOTOS" | cut -d: -f1)
+content_type_line=$(grep -nF "const contentType = response.headers?.get('content-type')" "$PHOTOS" | cut -d: -f1)
+json_parse_line=$(grep -nF "return normalizePhotos(await response.json())" "$PHOTOS" | cut -d: -f1)
+if [ -z "$status_check_line" ] || [ -z "$content_type_line" ] || \
+   [ -z "$json_parse_line" ] || [ "$status_check_line" -ge "$content_type_line" ] || \
+   [ "$content_type_line" -ge "$json_parse_line" ]; then
+  printf '%s\n' "Photo response content type must be validated after status and before JSON parsing." >&2
+  exit 1
+fi
+
+for content_type_test in \
+  "recognizes explicit JSON response media types" \
+  "rejects a successful photo response without a content type" \
+  "rejects a successful non-JSON photo response before parsing"; do
+  if ! grep -Fq "$content_type_test" "$APP_TEST"; then
+    printf '%s\n' "Missing photo response content-type regression test: $content_type_test" >&2
+    exit 1
+  fi
+done
+
+if ! grep -Fq "Successful photo responses must declare an application JSON media type" "$README" || \
+   ! grep -Fq "2026-06-13-photo-response-content-type.md" "$README"; then
+  printf '%s\n' "README must document photo response content-type validation and its plan." >&2
+  exit 1
+fi
+
+if [ ! -f "$CONTENT_TYPE_PLAN" ] || \
+   ! grep -Fq "status: completed" "$CONTENT_TYPE_PLAN" || \
+   ! grep -Fq "## Status: Completed" "$CONTENT_TYPE_PLAN" || \
+   ! grep -Fq "make check" "$CONTENT_TYPE_PLAN" || \
+   ! grep -Fq "Ten isolated hostile mutations were rejected" "$CONTENT_TYPE_PLAN"; then
+  printf '%s\n' "Photo response content-type plan must record completed status and verification." >&2
   exit 1
 fi
 
