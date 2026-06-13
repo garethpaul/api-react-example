@@ -43,6 +43,18 @@ function isHttpsUrl(value) {
   return normalizeHttpsUrl(value) !== null;
 }
 
+export function isJsonContentType(value) {
+  if (typeof value !== 'string') {
+    return false;
+  }
+
+  const mediaType = value.split(';', 1)[0].trim().toLowerCase();
+  return (
+    mediaType === 'application/json' ||
+    /^application\/[!#$%&'*+.^_`|~0-9a-z-]+\+json$/.test(mediaType)
+  );
+}
+
 export function isRenderablePhoto(photo) {
   return (
     Boolean(photo) &&
@@ -175,6 +187,11 @@ class Photos extends React.Component {
       : await fetch(PHOTO_ENDPOINT);
     if (!response.ok) {
       throw new Error(`Photo request failed with ${response.status}`);
+    }
+
+    const contentType = response.headers?.get('content-type');
+    if (!isJsonContentType(contentType)) {
+      throw new Error('Photo response must use a JSON content type.');
     }
 
     return normalizePhotos(await response.json());
