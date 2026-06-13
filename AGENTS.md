@@ -58,7 +58,7 @@
 - Photo IDs must be unique after React key coercion before cards are rendered.
 - Each photo load owns its abort controller and timeout; only the active request may update state or clear request resources.
 - Enforce the 2 MiB photo response body limit on raw bytes before JSON parsing;
-  streamed overflow must cancel and release its reader.
+  stream into one contiguous bounded buffer, and cancel/release on overflow.
 - Keep thumbnail requests lazy and use `referrerPolicy="no-referrer"` for arbitrary validated HTTPS hosts.
 
 ## Agent workflow

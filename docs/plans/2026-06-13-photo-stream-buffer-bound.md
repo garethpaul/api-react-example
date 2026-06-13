@@ -1,6 +1,6 @@
 # Bound Photo Stream Buffer Overhead
 
-Status: Planned
+Status: Completed
 
 ## Context
 
@@ -27,6 +27,7 @@ bookkeeping entries while remaining below the byte limit.
 ### 1. Contiguous stream accumulation
 
 Files:
+
 - `src/components/Photos.jsx`
 
 Allocate one buffer at the existing maximum, copy each accepted chunk at the
@@ -35,6 +36,7 @@ current offset, and parse only the populated view after releasing the reader.
 ### 2. Fragmentation-sensitive tests
 
 Files:
+
 - `src/App.test.jsx`
 
 Cover a valid response split into many one-byte chunks, exact-limit parsing,
@@ -44,6 +46,7 @@ fallback or malformed-byte tests.
 ### 3. Durable contracts and guidance
 
 Files:
+
 - `scripts/check-baseline.sh`
 - `AGENTS.md`
 - `README.md`
@@ -56,14 +59,29 @@ fragmented-stream test, documentation, and completed plan evidence.
 
 ## Verification
 
-- Focused Vitest stream-reader tests.
-- Full `corepack yarn verify` on the pinned Node/Yarn toolchain.
-- Hostile mutations for chunk-array restoration, per-chunk push, fixed-buffer
-  removal, copy-offset drift, populated-view removal, overflow cancellation or
-  lock-release removal, fragmented-stream test removal, and stale plan evidence.
-- Formatting, lint, build, `git diff --check`, generated-artifact inspection,
-  and credential-shaped added-line scanning.
-- Exact-head hosted Node matrix and code-scanning snapshot after push.
+Verification: Completed
+
+- Focused Vitest passes all 29 photo component tests, including a valid JSON
+  response split into one-byte chunks.
+- Full `corepack yarn verify` passes baseline contracts, ESLint, Prettier,
+  Vitest, and the Vite production build on the pinned toolchain.
+- Nine focused hostile mutations cover chunk-array restoration, copy removal,
+  copy-offset drift, populated-view removal, overflow cancellation removal,
+  lock-release removal, fragmented-stream test removal, stale plan status, and
+  missing mutation evidence. Every mutation is rejected.
+- `git diff --check`, generated-artifact inspection, and credential-shaped
+  added-line scanning are part of the pre-push audit.
+- Exact-head hosted Node matrix and code-scanning state are recorded after push.
+
+## Work Completed
+
+- Replaced the retained response chunk array with one fixed-capacity buffer at
+  the existing 2 MiB limit.
+- Copied each accepted chunk directly at the current byte offset and parsed
+  only the populated buffer view.
+- Preserved overflow cancellation, reader lock release, strict UTF-8 parsing,
+  fallback handling, and all request/render contracts.
+- Added high-fragmentation valid-stream coverage that reads one-byte chunks.
 
 ## Scope Boundaries
 

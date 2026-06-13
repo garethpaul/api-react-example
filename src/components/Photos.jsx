@@ -84,7 +84,7 @@ function parsePhotoJsonBytes(bytes) {
 
 async function readPhotoStream(body) {
   const reader = body.getReader();
-  const chunks = [];
+  const bytes = new Uint8Array(MAX_PHOTO_RESPONSE_BYTES);
   let receivedBytes = 0;
 
   try {
@@ -95,8 +95,7 @@ async function readPhotoStream(body) {
       }
 
       const chunk = value instanceof Uint8Array ? value : new Uint8Array(value);
-      receivedBytes += chunk.byteLength;
-      if (receivedBytes > MAX_PHOTO_RESPONSE_BYTES) {
+      if (chunk.byteLength > MAX_PHOTO_RESPONSE_BYTES - receivedBytes) {
         try {
           await reader.cancel();
         } catch {
@@ -104,19 +103,14 @@ async function readPhotoStream(body) {
         }
         throw new Error('Photo response body is too large.');
       }
-      chunks.push(chunk);
+      bytes.set(chunk, receivedBytes);
+      receivedBytes += chunk.byteLength;
     }
   } finally {
     reader.releaseLock();
   }
 
-  const bytes = new Uint8Array(receivedBytes);
-  let offset = 0;
-  chunks.forEach((chunk) => {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  });
-  return parsePhotoJsonBytes(bytes);
+  return parsePhotoJsonBytes(bytes.subarray(0, receivedBytes));
 }
 
 export async function readBoundedPhotoJson(response) {
