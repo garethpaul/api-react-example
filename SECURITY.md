@@ -34,6 +34,8 @@ Helpful reports include:
 - The 2 MiB photo response body limit bounds raw bytes before strict UTF-8 JSON
   decoding; a contiguous bounded buffer avoids fragmentation-driven object
   amplification, and streamed overflow cancels and releases the reader.
+- Timeout and unmount cleanup cancel pending response readers even without
+  `AbortController`, preventing stalled streams from retaining reader locks.
 - Review found database, model, query, or persistence-related code; changes in those areas should receive security-focused review before merge.
 - Dependency manifests detected: package.json, yarn.lock. Dependency updates should preserve lockfiles when present and avoid introducing packages without a clear maintenance reason.
 

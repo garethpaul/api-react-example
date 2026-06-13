@@ -82,10 +82,15 @@ function parsePhotoJsonBytes(bytes) {
   return JSON.parse(text);
 }
 
-async function readPhotoStream(body) {
+async function readPhotoStream(body, setReaderCancel) {
   const reader = body.getReader();
   const bytes = new Uint8Array(MAX_PHOTO_RESPONSE_BYTES);
   let receivedBytes = 0;
+  const cancelReader = () => reader.cancel();
+
+  if (setReaderCancel) {
+    setReaderCancel(cancelReader);
+  }
 
   try {
     while (true) {
@@ -107,13 +112,16 @@ async function readPhotoStream(body) {
       receivedBytes += chunk.byteLength;
     }
   } finally {
+    if (setReaderCancel) {
+      setReaderCancel(null);
+    }
     reader.releaseLock();
   }
 
   return parsePhotoJsonBytes(bytes.subarray(0, receivedBytes));
 }
 
-export async function readBoundedPhotoJson(response) {
+export async function readBoundedPhotoJson(response, setReaderCancel = null) {
   const contentLength = parseContentLength(
     response.headers?.get('content-length'),
   );
@@ -122,7 +130,7 @@ export async function readBoundedPhotoJson(response) {
   }
 
   if (response.body?.getReader) {
-    return readPhotoStream(response.body);
+    return readPhotoStream(response.body, setReaderCancel);
   }
 
   if (contentLength === null || typeof response.arrayBuffer !== 'function') {
@@ -213,6 +221,7 @@ class Photos extends React.Component {
     const request = {
       abortController:
         typeof AbortController === 'undefined' ? null : new AbortController(),
+      cancelResponseBody: null,
       timeoutId: null,
     };
     this.activeRequest = request;
@@ -229,6 +238,7 @@ class Photos extends React.Component {
     return new Promise((_, reject) => {
       request.timeoutId = setTimeout(() => {
         request.timeoutId = null;
+        this.cancelPhotoResponseBody(request);
         if (request.abortController) {
           request.abortController.abort();
         }
@@ -244,6 +254,20 @@ class Photos extends React.Component {
     }
   }
 
+  cancelPhotoResponseBody(request) {
+    const cancelResponseBody = request.cancelResponseBody;
+    request.cancelResponseBody = null;
+    if (!cancelResponseBody) {
+      return;
+    }
+
+    try {
+      Promise.resolve(cancelResponseBody()).catch(() => {});
+    } catch {
+      // Request cancellation remains best effort during timeout and unmount.
+    }
+  }
+
   cancelActivePhotoRequest() {
     const request = this.activeRequest;
     if (!request) {
@@ -252,12 +276,14 @@ class Photos extends React.Component {
 
     this.activeRequest = null;
     this.clearPhotoRequestTimeout(request);
+    this.cancelPhotoResponseBody(request);
     if (request.abortController) {
       request.abortController.abort();
     }
   }
 
-  async fetchPhotos(requestOptions) {
+  async fetchPhotos(request) {
+    const requestOptions = this.createPhotoRequestOptions(request);
     const response = requestOptions
       ? await fetch(PHOTO_ENDPOINT, requestOptions)
       : await fetch(PHOTO_ENDPOINT);
@@ -270,14 +296,17 @@ class Photos extends React.Component {
       throw new Error('Photo response must use a JSON content type.');
     }
 
-    return normalizePhotos(await readBoundedPhotoJson(response));
+    return normalizePhotos(
+      await readBoundedPhotoJson(response, (cancelResponseBody) => {
+        request.cancelResponseBody = cancelResponseBody;
+      }),
+    );
   }
 
   async loadPhotos() {
     const request = this.createPhotoRequest();
     try {
-      const requestOptions = this.createPhotoRequestOptions(request);
-      const photoRequest = this.fetchPhotos(requestOptions);
+      const photoRequest = this.fetchPhotos(request);
       const photos = await Promise.race([
         photoRequest,
         this.createPhotoRequestTimeout(request),

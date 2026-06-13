@@ -2,6 +2,8 @@
 
 ## 2026-06-13
 
+- Cancel pending response readers on timeout and unmount, including browsers
+  without `AbortController` support.
 - Replaced per-chunk photo stream retention with one contiguous bounded buffer,
   preserving exact-limit parsing and overflow cancellation.
 - Added a 2 MiB photo response body limit with streamed cancellation, fallback

@@ -57,6 +57,8 @@
 - Accepted photo titles and thumbnail URLs are normalized before they are used in headings, alt text, and image sources.
 - Photo IDs must be unique after React key coercion before cards are rendered.
 - Each photo load owns its abort controller and timeout; only the active request may update state or clear request resources.
+- Photo request timeout and unmount cleanup cancel pending response readers even
+  when `AbortController` is unavailable.
 - Enforce the 2 MiB photo response body limit on raw bytes before JSON parsing;
   stream into one contiguous bounded buffer, and cancel/release on overflow.
 - Keep thumbnail requests lazy and use `referrerPolicy="no-referrer"` for arbitrary validated HTTPS hosts.

@@ -1,6 +1,6 @@
 # Cancel Timed-Out Photo Streams
 
-Status: In Progress
+Status: Completed
 
 ## Context
 
@@ -58,13 +58,30 @@ hosted verification after implementation.
 
 ## Verification
 
-Verification: Pending
+Verification: Completed
 
-- Run focused Vitest coverage for the no-abort streamed timeout.
-- Run the complete pinned `make check` gate with an explicit timeout.
-- Run focused hostile mutations against reader registration, timeout
-  cancellation, ownership cleanup, regression coverage, and plan status.
-- Inspect the exact diff, generated artifacts, and credential-shaped additions.
+- Focused Vitest coverage passes the no-abort timeout and unmount stream
+  cancellation regressions.
+- ESLint, Prettier, all 31 Vitest tests, and the Vite production build pass on
+  the pinned Yarn toolchain.
+- Eight focused hostile mutations remove timeout or unmount cancellation,
+  reader registration, callback forwarding, cancellation invocation, reader
+  lock release, the lifecycle regression names, or completed plan status; every
+  mutation is rejected.
+- Full `make check`, exact-diff inspection, generated artifact review, and
+  credential-shaped addition scanning are completed before the implementation
+  commit.
+
+## Work Completed
+
+- Registered the acquired response reader's cancellation function with its
+  owning photo request.
+- Reused request cancellation for timeout and unmount cleanup, independently of
+  `AbortController` availability.
+- Cleared reader ownership before releasing the lock and preserved all bounded
+  byte parsing behavior.
+- Added deterministic timeout and unmount regressions for never-ending streams
+  without abort support.
 
 ## Scope Boundaries
 
