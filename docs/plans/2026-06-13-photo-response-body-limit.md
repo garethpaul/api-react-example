@@ -119,6 +119,9 @@ Document the bounded JSON body contract and record exact validation evidence.
   from an external working directory.
 - Live browser transport was not exercised; stream/fallback behavior is covered
   with deterministic response-reader fixtures and production build validation.
+- A 2026-06-14 follow-up superseded the allocating `arrayBuffer()` fallback:
+  successful responses now require a readable byte stream because a whole-body
+  API cannot enforce the ceiling before allocation.
 
 ## Sources
 

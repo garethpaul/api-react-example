@@ -1,6 +1,6 @@
 # Photo Readable Stream Boundary
 
-Status: Planned
+Status: Completed
 
 ## Problem
 
@@ -49,3 +49,27 @@ browser has already allocated the complete response. A false or missing
 - Do not change the endpoint, request timeout, render limit, UI, dependencies,
   or hosted Node matrix.
 - Do not add buffering libraries or claim live browser transport validation.
+
+## Completed Work
+
+- Removed the allocating `arrayBuffer()` compatibility path and failed closed
+  unless the response exposes a readable byte stream.
+- Converted successful, malformed-byte, exact-limit, lifecycle, and stale-work
+  fixtures to deterministic stream readers.
+- Added an explicit regression proving an unstreamable response never invokes
+  its whole-body fallback.
+- Extended the fail-closed baseline contracts and corrected repository guidance
+  that had described post-allocation fallback checks as a memory bound.
+
+## Verification
+
+- The focused `src/App.test.jsx` run passed all 36 tests.
+- ESLint, Prettier, all 36 Vitest tests, and the Vite production build passed.
+- `make check` passed from the repository and through the absolute Makefile path
+  from `/tmp`, including baseline contracts, lint, formatting, all tests, and
+  the production build.
+- Four isolated hostile mutations were rejected for removing the stream
+  predicate, restoring `arrayBuffer()`, renaming the regression, or weakening
+  readable-stream documentation.
+- Live browser transport was not exercised; deterministic response readers
+  validate the application boundary.

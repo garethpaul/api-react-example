@@ -46,13 +46,11 @@ function jsonHeaders(
 
 function mockFetchSuccess(data = photos) {
   const bytes = utf8.encode(JSON.stringify(data));
+  const { response } = streamingJsonResponse([bytes], String(bytes.byteLength));
   global.fetch = vi.fn().mockResolvedValue({
+    ...response,
     ok: true,
-    headers: jsonHeaders(
-      'application/json; charset=utf-8',
-      String(bytes.byteLength),
-    ),
-    arrayBuffer: vi.fn().mockResolvedValue(bytes.buffer),
+    redirected: false,
   });
 }
 
@@ -318,24 +316,21 @@ test('preserves the invalid chunk error when reader cancellation fails', async (
   expect(reader.releaseLock).toHaveBeenCalledTimes(1);
 });
 
-test('rejects an oversized photo response through the array buffer fallback', async () => {
+test('rejects an unstreamable photo response without whole-body fallback', async () => {
+  const arrayBuffer = vi.fn();
   const response = {
     headers: jsonHeaders('application/json', String(MAX_PHOTO_RESPONSE_BYTES)),
-    arrayBuffer: vi
-      .fn()
-      .mockResolvedValue(new Uint8Array(MAX_PHOTO_RESPONSE_BYTES + 1).buffer),
+    arrayBuffer,
   };
 
   await expect(readBoundedPhotoJson(response)).rejects.toThrow(
-    'Photo response body is too large.',
+    'Photo response body must be a readable stream.',
   );
+  expect(arrayBuffer).not.toHaveBeenCalled();
 });
 
 test('rejects malformed UTF-8 photo response bytes', async () => {
-  const response = {
-    headers: jsonHeaders('application/json', '1'),
-    arrayBuffer: vi.fn().mockResolvedValue(new Uint8Array([0x80]).buffer),
-  };
+  const { response } = streamingJsonResponse([new Uint8Array([0x80])], '1');
 
   await expect(readBoundedPhotoJson(response)).rejects.toThrow(TypeError);
 });
@@ -343,37 +338,40 @@ test('rejects malformed UTF-8 photo response bytes', async () => {
 test('accepts valid JSON exactly at the photo response byte limit', async () => {
   const json = `${' '.repeat(MAX_PHOTO_RESPONSE_BYTES - 2)}[]`;
   const bytes = utf8.encode(json);
-  const response = {
-    headers: jsonHeaders('application/json', String(bytes.byteLength)),
-    arrayBuffer: vi.fn().mockResolvedValue(bytes.buffer),
-  };
+  const { response } = streamingJsonResponse([bytes], String(bytes.byteLength));
 
   expect(bytes.byteLength).toBe(MAX_PHOTO_RESPONSE_BYTES);
   await expect(readBoundedPhotoJson(response)).resolves.toEqual([]);
 });
 
 test('does not update state after unmounting during photo load', async () => {
-  let resolveBody;
-  const arrayBuffer = vi.fn(
+  let finishRead;
+  const read = vi.fn(
     () =>
       new Promise((resolve) => {
-        resolveBody = resolve;
+        finishRead = resolve;
       }),
   );
+  const cancel = vi.fn().mockImplementation(() => {
+    finishRead({ done: true, value: undefined });
+    return Promise.resolve();
+  });
   global.fetch = vi.fn().mockResolvedValue({
     ok: true,
-    headers: jsonHeaders('application/json', '2'),
-    arrayBuffer,
+    headers: jsonHeaders('application/json'),
+    body: {
+      getReader: vi.fn(() => ({ read, cancel, releaseLock: vi.fn() })),
+    },
   });
   const setStateSpy = vi.spyOn(Photos.prototype, 'setState');
 
   const { unmount } = render(<Photos />);
 
-  await waitFor(() => expect(arrayBuffer).toHaveBeenCalled());
+  await waitFor(() => expect(read).toHaveBeenCalled());
   unmount();
 
   await act(async () => {
-    resolveBody(utf8.encode(JSON.stringify(photos)).buffer);
+    await Promise.resolve();
   });
 
   expect(setStateSpy).not.toHaveBeenCalled();
@@ -411,14 +409,8 @@ test('ignores a superseded request after the same instance remounts', async () =
         }),
     )
     .mockResolvedValueOnce({
+      ...streamingJsonResponse([utf8.encode(JSON.stringify(photos))]).response,
       ok: true,
-      headers: jsonHeaders(
-        'application/json',
-        String(utf8.encode(JSON.stringify(photos)).byteLength),
-      ),
-      arrayBuffer: vi
-        .fn()
-        .mockResolvedValue(utf8.encode(JSON.stringify(photos)).buffer),
     });
   const component = new Photos({});
   component.setState = vi.fn();
@@ -463,22 +455,21 @@ test('aborts and renders an error when the photo request times out', async () =>
   expect(screen.getByRole('alert')).toHaveTextContent('Unable to load photos.');
 });
 
-test('times out while parsing photos without abort support', async () => {
-  vi.useFakeTimers();
+test('rejects an unstreamable response without abort support', async () => {
   global.AbortController = undefined;
+  const arrayBuffer = vi.fn();
   global.fetch = vi.fn().mockResolvedValue({
     ok: true,
     headers: jsonHeaders('application/json', '2'),
-    arrayBuffer: vi.fn(() => new Promise(() => {})),
+    arrayBuffer,
   });
 
   render(<Photos />);
 
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(PHOTO_REQUEST_TIMEOUT_MS);
-  });
-
-  expect(screen.getByRole('alert')).toHaveTextContent('Unable to load photos.');
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Unable to load photos.',
+  );
+  expect(arrayBuffer).not.toHaveBeenCalled();
 });
 
 test('cancels a pending photo stream on timeout without abort support', async () => {

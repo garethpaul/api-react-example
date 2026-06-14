@@ -102,9 +102,10 @@ When the required SDK or runtime is unavailable, use static checks and source re
   the response body is parsed; missing, HTML, and other non-JSON types fail closed.
 - Photo requests reject redirects before response parsing so the fixed endpoint
   cannot silently transfer response trust to another origin.
-- A 2 MiB photo response body limit is enforced on raw streamed or fallback
-  bytes before strict UTF-8 decoding and JSON parsing. Streamed bytes are copied
-  into one contiguous bounded buffer instead of retaining per-chunk objects.
+- A 2 MiB photo response body limit is enforced on raw streamed bytes before
+  strict UTF-8 decoding and JSON parsing. Responses require a readable byte
+  stream so the app never relies on an allocating whole-body fallback, and
+  received bytes stay in one contiguous bounded buffer.
 - Photo response streams reject malformed or empty chunks before buffer writes
   and cancel the reader on validation failure.
 - Thumbnail URLs must parse as HTTPS URLs before the app renders image elements.
