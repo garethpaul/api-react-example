@@ -100,6 +100,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   error state instead of creating broken cards.
 - Successful photo responses must declare an application JSON media type before
   the response body is parsed; missing, HTML, and other non-JSON types fail closed.
+- Photo requests reject redirects before response parsing so the fixed endpoint
+  cannot silently transfer response trust to another origin.
 - A 2 MiB photo response body limit is enforced on raw streamed or fallback
   bytes before strict UTF-8 decoding and JSON parsing. Streamed bytes are copied
   into one contiguous bounded buffer instead of retaining per-chunk objects.
@@ -143,6 +145,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   state-update guard.
 - See `docs/plans/2026-06-13-photo-response-content-type.md` for the successful
   response media-type validation contract.
+- See `docs/plans/2026-06-14-photo-response-redirect-rejection.md` for the fixed
+  endpoint redirect rejection contract.
 - See `VISION.md` for project direction and contribution guardrails.
 - See `CHANGES.md` for the maintenance history.
 

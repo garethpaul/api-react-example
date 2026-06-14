@@ -1,6 +1,6 @@
 # Photo Response Redirect Rejection
 
-Status: Planned
+Status: Completed
 
 ## Problem
 
@@ -35,3 +35,26 @@ and record validation path.
 - Do not add redirect following, manual redirect resolution, or origin
   allowlists beyond the existing fixed endpoint.
 - Do not merge or close any pull request without explicit owner authorization.
+
+## Work Completed
+
+- Sent all photo requests with redirect mode `error`, with or without
+  AbortController support.
+- Rejected redirected successful responses before content-type or body reads.
+- Added request-option, response-ordering, test, documentation, and completed
+  plan contracts.
+
+## Verification Results
+
+- Installed the exact `yarn.lock` graph with lifecycle scripts disabled, then
+  passed the dependency-free checker and two focused redirect tests.
+- `make check` passed the baseline, ESLint, Prettier, all 33 Vitest tests, and
+  the Vite production build.
+- `yarn audit --level moderate` reported zero vulnerabilities across 251
+  packages.
+- The dependency-free checker rejected all 11 hostile mutations covering
+  request mode, request options, response guard and ordering, regression tests,
+  completed-plan evidence, and documentation.
+- Exact-diff, whitespace, conflict-marker, JSON, YAML, generated-artifact, and
+  changed-line credential-pattern audits passed. No changed SVG files required
+  parsing; `gitleaks`, `jq`, and `xmllint` were unavailable.
