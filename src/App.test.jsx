@@ -279,6 +279,45 @@ test('parses a valid photo response split into one-byte stream chunks', async ()
   expect(reader.releaseLock).toHaveBeenCalledTimes(1);
 });
 
+test('rejects a non-byte photo stream chunk and clears reader ownership', async () => {
+  const spoofedChunk = {
+    byteLength: 1,
+    [Symbol.toStringTag]: 'Uint8Array',
+  };
+  const { response, reader } = streamingJsonResponse([spoofedChunk]);
+  const setReaderCancel = vi.fn();
+
+  await expect(readBoundedPhotoJson(response, setReaderCancel)).rejects.toThrow(
+    'Photo response stream chunk is invalid.',
+  );
+  expect(reader.cancel).toHaveBeenCalledTimes(1);
+  expect(reader.releaseLock).toHaveBeenCalledTimes(1);
+  expect(setReaderCancel).toHaveBeenCalledWith(expect.any(Function));
+  expect(setReaderCancel).toHaveBeenLastCalledWith(null);
+});
+
+test('rejects an empty photo stream chunk without waiting for timeout', async () => {
+  const { response, reader } = streamingJsonResponse([new Uint8Array(0)]);
+
+  await expect(readBoundedPhotoJson(response)).rejects.toThrow(
+    'Photo response stream chunk is invalid.',
+  );
+  expect(reader.cancel).toHaveBeenCalledTimes(1);
+  expect(reader.read).toHaveBeenCalledTimes(1);
+  expect(reader.releaseLock).toHaveBeenCalledTimes(1);
+});
+
+test('preserves the invalid chunk error when reader cancellation fails', async () => {
+  const { response, reader } = streamingJsonResponse([new Uint8Array(0)]);
+  reader.cancel.mockRejectedValue(new Error('cancel failed'));
+
+  await expect(readBoundedPhotoJson(response)).rejects.toThrow(
+    'Photo response stream chunk is invalid.',
+  );
+  expect(reader.cancel).toHaveBeenCalledTimes(1);
+  expect(reader.releaseLock).toHaveBeenCalledTimes(1);
+});
+
 test('rejects an oversized photo response through the array buffer fallback', async () => {
   const response = {
     headers: jsonHeaders('application/json', String(MAX_PHOTO_RESPONSE_BYTES)),

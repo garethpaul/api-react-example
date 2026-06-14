@@ -25,6 +25,7 @@ RESPONSE_BODY_LIMIT_PLAN="$ROOT_DIR/docs/plans/2026-06-13-photo-response-body-li
 STREAM_BUFFER_PLAN="$ROOT_DIR/docs/plans/2026-06-13-photo-stream-buffer-bound.md"
 STREAM_TIMEOUT_PLAN="$ROOT_DIR/docs/plans/2026-06-13-photo-stream-timeout-cancellation.md"
 REDIRECT_REJECTION_PLAN="$ROOT_DIR/docs/plans/2026-06-14-photo-response-redirect-rejection.md"
+STREAM_CHUNK_PLAN="$ROOT_DIR/docs/plans/2026-06-14-photo-stream-chunk-validation.md"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
   printf '%s\n' "CHANGES.md must document repository maintenance." >&2
@@ -549,6 +550,10 @@ for response_body_contract in \
   "response.headers?.get('content-length')" \
   "new TextDecoder('utf-8', { fatal: true })" \
   "response.body?.getReader" \
+  "ArrayBuffer.isView(value)" \
+  "Object.prototype.toString.call(value) === '[object Uint8Array]'" \
+  "!isUint8Array(value) || value.byteLength === 0" \
+  "await cancelPhotoReader(reader)" \
   "chunk.byteLength > MAX_PHOTO_RESPONSE_BYTES - receivedBytes" \
   "await reader.cancel()" \
   "reader.releaseLock()" \
@@ -556,6 +561,43 @@ for response_body_contract in \
   "new Uint8Array(await response.arrayBuffer())"; do
   if ! grep -Fq "$response_body_contract" "$PHOTOS"; then
     printf '%s\n' "Missing bounded photo response-body contract: $response_body_contract" >&2
+    exit 1
+  fi
+done
+
+invalid_chunk_line=$(grep -nF '!isUint8Array(value) || value.byteLength === 0' "$PHOTOS" | cut -d: -f1)
+chunk_assignment_line=$(grep -nF 'const chunk = value;' "$PHOTOS" | cut -d: -f1)
+chunk_copy_line=$(grep -nF 'bytes.set(chunk, receivedBytes)' "$PHOTOS" | cut -d: -f1)
+if [ -z "$invalid_chunk_line" ] || [ -z "$chunk_assignment_line" ] || \
+   [ -z "$chunk_copy_line" ] || [ "$invalid_chunk_line" -ge "$chunk_assignment_line" ] || \
+   [ "$chunk_assignment_line" -ge "$chunk_copy_line" ]; then
+  printf '%s\n' "Photo stream chunks must be validated before assignment and copying." >&2
+  exit 1
+fi
+for chunk_test in \
+  'rejects a non-byte photo stream chunk and clears reader ownership' \
+  "[Symbol.toStringTag]: 'Uint8Array'" \
+  'rejects an empty photo stream chunk without waiting for timeout' \
+  'preserves the invalid chunk error when reader cancellation fails' \
+  'expect(setReaderCancel).toHaveBeenLastCalledWith(null)' \
+  'expect(reader.read).toHaveBeenCalledTimes(1)'; do
+  if ! grep -Fq "$chunk_test" "$APP_TEST"; then
+    printf '%s\n' "Photo stream chunk tests are incomplete: $chunk_test" >&2
+    exit 1
+  fi
+done
+if [ ! -f "$STREAM_CHUNK_PLAN" ] || \
+   ! grep -Fq "Status: Completed" "$STREAM_CHUNK_PLAN" || \
+   ! grep -Fq "yarn verify" "$STREAM_CHUNK_PLAN" || \
+   ! grep -Fq "hostile mutations" "$STREAM_CHUNK_PLAN"; then
+  printf '%s\n' "Photo stream chunk plan must record completed verification." >&2
+  exit 1
+fi
+for stream_chunk_doc in "$ROOT_DIR/AGENTS.md" "$README" "$ROOT_DIR/SECURITY.md" \
+  "$ROOT_DIR/VISION.md" "$ROOT_DIR/CHANGES.md"; do
+  if ! tr '\n' ' ' < "$stream_chunk_doc" | tr -s '[:space:]' ' ' | \
+      grep -Eiq 'reject(ed)? malformed (or|and) (empty|zero-length).*(stream )?chunks'; then
+    printf '%s\n' "$stream_chunk_doc must document malformed and empty stream-chunk rejection." >&2
     exit 1
   fi
 done

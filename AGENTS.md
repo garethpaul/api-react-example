@@ -59,6 +59,8 @@
 - Each photo load owns its abort controller and timeout; only the active request may update state or clear request resources.
 - Photo request timeout and unmount cleanup cancel pending response readers even
   when `AbortController` is unavailable.
+- Photo response streams reject malformed or empty chunks before buffer writes
+  and cancel the reader on validation failure.
 - Photo requests reject redirects before response parsing so the fixed endpoint
   cannot silently transfer response trust to another origin.
 - Enforce the 2 MiB photo response body limit on raw bytes before JSON parsing;

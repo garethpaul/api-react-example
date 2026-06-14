@@ -82,6 +82,21 @@ function parsePhotoJsonBytes(bytes) {
   return JSON.parse(text);
 }
 
+function isUint8Array(value) {
+  return (
+    ArrayBuffer.isView(value) &&
+    Object.prototype.toString.call(value) === '[object Uint8Array]'
+  );
+}
+
+async function cancelPhotoReader(reader) {
+  try {
+    await reader.cancel();
+  } catch {
+    // Preserve the deterministic validation error if cancellation also fails.
+  }
+}
+
 async function readPhotoStream(body, setReaderCancel) {
   const reader = body.getReader();
   const bytes = new Uint8Array(MAX_PHOTO_RESPONSE_BYTES);
@@ -99,13 +114,14 @@ async function readPhotoStream(body, setReaderCancel) {
         break;
       }
 
-      const chunk = value instanceof Uint8Array ? value : new Uint8Array(value);
+      if (!isUint8Array(value) || value.byteLength === 0) {
+        await cancelPhotoReader(reader);
+        throw new Error('Photo response stream chunk is invalid.');
+      }
+
+      const chunk = value;
       if (chunk.byteLength > MAX_PHOTO_RESPONSE_BYTES - receivedBytes) {
-        try {
-          await reader.cancel();
-        } catch {
-          // Preserve the deterministic overflow error if cancellation also fails.
-        }
+        await cancelPhotoReader(reader);
         throw new Error('Photo response body is too large.');
       }
       bytes.set(chunk, receivedBytes);

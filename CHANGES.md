@@ -2,6 +2,8 @@
 
 ## 2026-06-14
 
+- Rejected malformed and zero-length photo stream chunks before bounded buffer
+  writes, with best-effort reader cancellation.
 - Photo requests reject redirects before response parsing so the fixed endpoint
   cannot silently transfer response trust to another origin.
 
