@@ -20,6 +20,8 @@ Priority:
 - Preserve the `Photos` component as the central API example
 - Keep `yarn start`, `yarn test`, and `yarn build` usable
 - Make network assumptions visible instead of hidden in component code
+- Photo requests reject redirects before response parsing so the fixed endpoint
+  cannot silently transfer response trust to another origin
 - Require successful API responses to identify JSON content before parsing
 - Enforce a 2 MiB photo response body limit before JSON parsing
 - Keep streamed response bytes in one contiguous bounded buffer

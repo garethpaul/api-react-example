@@ -24,6 +24,7 @@ CONTENT_TYPE_PLAN="$ROOT_DIR/docs/plans/2026-06-13-photo-response-content-type.m
 RESPONSE_BODY_LIMIT_PLAN="$ROOT_DIR/docs/plans/2026-06-13-photo-response-body-limit.md"
 STREAM_BUFFER_PLAN="$ROOT_DIR/docs/plans/2026-06-13-photo-stream-buffer-bound.md"
 STREAM_TIMEOUT_PLAN="$ROOT_DIR/docs/plans/2026-06-13-photo-stream-timeout-cancellation.md"
+REDIRECT_REJECTION_PLAN="$ROOT_DIR/docs/plans/2026-06-14-photo-response-redirect-rejection.md"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
   printf '%s\n' "CHANGES.md must document repository maintenance." >&2
@@ -240,6 +241,55 @@ if ! grep -Fq 'PHOTO_ENDPOINT = '\''https://jsonplaceholder.typicode.com/photos'
   printf '%s\n' "Photo endpoint must stay on HTTPS JSONPlaceholder." >&2
   exit 1
 fi
+
+for redirect_contract in \
+  "const options = { redirect: 'error' }" \
+  "const response = await fetch(PHOTO_ENDPOINT, requestOptions)" \
+  "if (response.redirected)" \
+  "Photo response redirects are not allowed."; do
+  if ! grep -Fq "$redirect_contract" "$PHOTOS"; then
+    printf '%s\n' "Missing photo redirect-rejection contract: $redirect_contract" >&2
+    exit 1
+  fi
+done
+
+if ! awk '
+  /if \(!response\.ok\)/ { ok_guard = NR }
+  /if \(response\.redirected\)/ { redirect_guard = NR }
+  /response\.headers\?\.get\('\''content-type'\''\)/ { content_type = NR }
+  END { exit !(ok_guard && redirect_guard && content_type && ok_guard < redirect_guard && redirect_guard < content_type) }
+' "$PHOTOS"; then
+  printf '%s\n' "Redirected photo responses must be rejected before header and body parsing." >&2
+  exit 1
+fi
+
+for redirect_test in \
+  "disables redirects when abort support is unavailable" \
+  "rejects a redirected photo response before reading headers or body" \
+  "expect(getHeader).not.toHaveBeenCalled()" \
+  "expect(arrayBuffer).not.toHaveBeenCalled()"; do
+  if ! grep -Fq "$redirect_test" "$APP_TEST"; then
+    printf '%s\n' "Missing photo redirect regression contract: $redirect_test" >&2
+    exit 1
+  fi
+done
+
+if [ ! -f "$REDIRECT_REJECTION_PLAN" ] || \
+   ! grep -Fq "Status: Completed" "$REDIRECT_REJECTION_PLAN" || \
+   ! grep -Fq "make check" "$REDIRECT_REJECTION_PLAN" || \
+   ! grep -Fq "hostile mutations" "$REDIRECT_REJECTION_PLAN"; then
+  printf '%s\n' "Photo redirect-rejection plan must record completed verification." >&2
+  exit 1
+fi
+
+for redirect_doc in "$ROOT_DIR/AGENTS.md" "$README" "$ROOT_DIR/SECURITY.md" \
+  "$ROOT_DIR/VISION.md" "$ROOT_DIR/CHANGES.md"; do
+  if ! tr '\n' ' ' < "$redirect_doc" | tr -s '[:space:]' ' ' | \
+      grep -Fiq "reject redirects before response parsing"; then
+    printf '%s\n' "$redirect_doc must document photo response redirect rejection." >&2
+    exit 1
+  fi
+done
 
 if ! grep -Fq "componentDidMount()" "$PHOTOS"; then
   printf '%s\n' "Photo loading must use componentDidMount instead of deprecated lifecycle hooks." >&2

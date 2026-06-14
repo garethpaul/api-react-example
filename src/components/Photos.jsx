@@ -229,9 +229,11 @@ class Photos extends React.Component {
   }
 
   createPhotoRequestOptions(request) {
-    return request.abortController
-      ? { signal: request.abortController.signal }
-      : null;
+    const options = { redirect: 'error' };
+    if (request.abortController) {
+      options.signal = request.abortController.signal;
+    }
+    return options;
   }
 
   createPhotoRequestTimeout(request) {
@@ -284,11 +286,12 @@ class Photos extends React.Component {
 
   async fetchPhotos(request) {
     const requestOptions = this.createPhotoRequestOptions(request);
-    const response = requestOptions
-      ? await fetch(PHOTO_ENDPOINT, requestOptions)
-      : await fetch(PHOTO_ENDPOINT);
+    const response = await fetch(PHOTO_ENDPOINT, requestOptions);
     if (!response.ok) {
       throw new Error(`Photo request failed with ${response.status}`);
+    }
+    if (response.redirected) {
+      throw new Error('Photo response redirects are not allowed.');
     }
 
     const contentType = response.headers?.get('content-type');

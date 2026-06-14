@@ -103,10 +103,15 @@ test('loads and renders photos from the placeholder API', async () => {
   if (global.AbortController) {
     expect(global.fetch).toHaveBeenCalledWith(
       PHOTO_ENDPOINT,
-      expect.objectContaining({ signal: expect.any(Object) }),
+      expect.objectContaining({
+        redirect: 'error',
+        signal: expect.any(Object),
+      }),
     );
   } else {
-    expect(global.fetch).toHaveBeenCalledWith(PHOTO_ENDPOINT);
+    expect(global.fetch).toHaveBeenCalledWith(PHOTO_ENDPOINT, {
+      redirect: 'error',
+    });
   }
   expect(await screen.findByText('First photo')).toBeInTheDocument();
   expect(screen.getByAltText('Second photo')).toHaveAttribute(
@@ -146,6 +151,37 @@ test('renders an error state when the photo request is not ok', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent(
     'Unable to load photos.',
   );
+});
+
+test('disables redirects when abort support is unavailable', async () => {
+  global.AbortController = undefined;
+  mockFetchSuccess();
+
+  render(<Photos />);
+
+  expect(await screen.findByText('First photo')).toBeInTheDocument();
+  expect(global.fetch).toHaveBeenCalledWith(PHOTO_ENDPOINT, {
+    redirect: 'error',
+  });
+});
+
+test('rejects a redirected photo response before reading headers or body', async () => {
+  const getHeader = vi.fn();
+  const arrayBuffer = vi.fn();
+  global.fetch = vi.fn().mockResolvedValue({
+    ok: true,
+    redirected: true,
+    headers: { get: getHeader },
+    arrayBuffer,
+  });
+
+  render(<Photos />);
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Unable to load photos.',
+  );
+  expect(getHeader).not.toHaveBeenCalled();
+  expect(arrayBuffer).not.toHaveBeenCalled();
 });
 
 test('recognizes explicit JSON response media types', () => {
@@ -315,7 +351,10 @@ test('aborts pending photo fetch after unmount', () => {
 
   const { unmount } = render(<Photos />);
 
-  expect(global.fetch).toHaveBeenCalledWith(PHOTO_ENDPOINT, { signal });
+  expect(global.fetch).toHaveBeenCalledWith(PHOTO_ENDPOINT, {
+    redirect: 'error',
+    signal,
+  });
 
   unmount();
 

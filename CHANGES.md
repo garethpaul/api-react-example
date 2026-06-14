@@ -1,5 +1,10 @@
 # API React Example Changes
 
+## 2026-06-14
+
+- Photo requests reject redirects before response parsing so the fixed endpoint
+  cannot silently transfer response trust to another origin.
+
 ## 2026-06-13
 
 - Cancel pending response readers on timeout and unmount, including browsers
