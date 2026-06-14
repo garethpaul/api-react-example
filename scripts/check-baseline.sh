@@ -26,6 +26,7 @@ STREAM_BUFFER_PLAN="$ROOT_DIR/docs/plans/2026-06-13-photo-stream-buffer-bound.md
 STREAM_TIMEOUT_PLAN="$ROOT_DIR/docs/plans/2026-06-13-photo-stream-timeout-cancellation.md"
 REDIRECT_REJECTION_PLAN="$ROOT_DIR/docs/plans/2026-06-14-photo-response-redirect-rejection.md"
 STREAM_CHUNK_PLAN="$ROOT_DIR/docs/plans/2026-06-14-photo-stream-chunk-validation.md"
+READABLE_STREAM_PLAN="$ROOT_DIR/docs/plans/2026-06-14-photo-readable-stream-boundary.md"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
   printf '%s\n' "CHANGES.md must document repository maintenance." >&2
@@ -549,16 +550,16 @@ for response_body_contract in \
   "export async function readBoundedPhotoJson(response, setReaderCancel = null)" \
   "response.headers?.get('content-length')" \
   "new TextDecoder('utf-8', { fatal: true })" \
-  "response.body?.getReader" \
+  "typeof response.body?.getReader !== 'function'" \
+  "Photo response body must be a readable stream." \
+  "return readPhotoStream(response.body, setReaderCancel)" \
   "ArrayBuffer.isView(value)" \
   "Object.prototype.toString.call(value) === '[object Uint8Array]'" \
   "!isUint8Array(value) || value.byteLength === 0" \
   "await cancelPhotoReader(reader)" \
   "chunk.byteLength > MAX_PHOTO_RESPONSE_BYTES - receivedBytes" \
   "await reader.cancel()" \
-  "reader.releaseLock()" \
-  "contentLength === null || typeof response.arrayBuffer !== 'function'" \
-  "new Uint8Array(await response.arrayBuffer())"; do
+  "reader.releaseLock()"; do
   if ! grep -Fq "$response_body_contract" "$PHOTOS"; then
     printf '%s\n' "Missing bounded photo response-body contract: $response_body_contract" >&2
     exit 1
@@ -619,8 +620,10 @@ if grep -Fq "const chunks = []" "$PHOTOS" || \
   exit 1
 fi
 
-if grep -Fq "response.json()" "$PHOTOS" || grep -Fq "response.text()" "$PHOTOS"; then
-  printf '%s\n' "Photo JSON must pass through authoritative bounded byte decoding." >&2
+if grep -Fq "response.json()" "$PHOTOS" || \
+   grep -Fq "response.text()" "$PHOTOS" || \
+   grep -Fq "response.arrayBuffer()" "$PHOTOS"; then
+  printf '%s\n' "Photo JSON must pass through authoritative bounded stream decoding." >&2
   exit 1
 fi
 
@@ -629,11 +632,33 @@ for response_body_test in \
   "cancels a streamed photo response when its byte limit is crossed" \
   "releases a streamed photo reader after successful parsing" \
   "parses a valid photo response split into one-byte stream chunks" \
-  "rejects an oversized photo response through the array buffer fallback" \
+  "rejects an unstreamable photo response without whole-body fallback" \
   "rejects malformed UTF-8 photo response bytes" \
   "accepts valid JSON exactly at the photo response byte limit"; do
   if ! grep -Fq "$response_body_test" "$APP_TEST"; then
     printf '%s\n' "Missing photo response-body regression test: $response_body_test" >&2
+    exit 1
+  fi
+done
+
+if ! grep -Fq "expect(arrayBuffer).not.toHaveBeenCalled()" "$APP_TEST"; then
+  printf '%s\n' "Unstreamable response coverage must reject whole-body fallback calls." >&2
+  exit 1
+fi
+
+if [ ! -f "$READABLE_STREAM_PLAN" ] || \
+   ! grep -Fq "Status: Completed" "$READABLE_STREAM_PLAN" || \
+   ! grep -Fq "make check" "$READABLE_STREAM_PLAN" || \
+   ! grep -Fq "hostile mutations" "$READABLE_STREAM_PLAN"; then
+  printf '%s\n' "Photo readable stream plan must record completed verification." >&2
+  exit 1
+fi
+
+for readable_stream_doc in "$ROOT_DIR/AGENTS.md" "$README" "$ROOT_DIR/SECURITY.md" \
+  "$ROOT_DIR/VISION.md" "$ROOT_DIR/CHANGES.md"; do
+  if ! tr '\n' ' ' < "$readable_stream_doc" | tr -s '[:space:]' ' ' | \
+      grep -Eiq 'require(s|d)? a readable (byte )?stream'; then
+    printf '%s\n' "$readable_stream_doc must document the readable stream boundary." >&2
     exit 1
   fi
 done
@@ -789,7 +814,7 @@ fi
 
 for timeout_test_contract in \
   "aborts and renders an error when the photo request times out" \
-  "times out while parsing photos without abort support" \
+  "cancels a pending photo stream on timeout without abort support" \
   "global.AbortController = undefined" \
   "vi.useFakeTimers()" \
   "vi.advanceTimersByTimeAsync(PHOTO_REQUEST_TIMEOUT_MS)"; do

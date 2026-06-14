@@ -2,6 +2,8 @@
 
 ## 2026-06-14
 
+- Required a readable byte stream for photo responses and rejected allocating
+  whole-body fallbacks that cannot enforce the 2 MiB ceiling in advance.
 - Rejected malformed and zero-length photo stream chunks before bounded buffer
   writes, with best-effort reader cancellation.
 - Photo requests reject redirects before response parsing so the fixed endpoint

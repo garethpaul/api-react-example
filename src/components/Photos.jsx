@@ -145,14 +145,11 @@ export async function readBoundedPhotoJson(response, setReaderCancel = null) {
     throw new Error('Photo response body is too large.');
   }
 
-  if (response.body?.getReader) {
-    return readPhotoStream(response.body, setReaderCancel);
+  if (typeof response.body?.getReader !== 'function') {
+    throw new Error('Photo response body must be a readable stream.');
   }
 
-  if (contentLength === null || typeof response.arrayBuffer !== 'function') {
-    throw new Error('Photo response body is unavailable.');
-  }
-  return parsePhotoJsonBytes(new Uint8Array(await response.arrayBuffer()));
+  return readPhotoStream(response.body, setReaderCancel);
 }
 
 export function isRenderablePhoto(photo) {

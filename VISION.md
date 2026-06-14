@@ -24,6 +24,8 @@ Priority:
   cannot silently transfer response trust to another origin
 - Require successful API responses to identify JSON content before parsing
 - Enforce a 2 MiB photo response body limit before JSON parsing
+- Require a readable byte stream so the response limit applies before
+  whole-body allocation
 - Keep streamed response bytes in one contiguous bounded buffer
 - Reject malformed or empty response stream chunks before buffer writes
 - Validate API item shape before rendering photo cards

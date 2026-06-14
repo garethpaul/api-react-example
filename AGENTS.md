@@ -65,6 +65,8 @@
   cannot silently transfer response trust to another origin.
 - Enforce the 2 MiB photo response body limit on raw bytes before JSON parsing;
   stream into one contiguous bounded buffer, and cancel/release on overflow.
+- Require a readable byte stream and reject whole-body fallbacks that cannot
+  enforce the memory ceiling before allocation.
 - Keep thumbnail requests lazy and use `referrerPolicy="no-referrer"` for arbitrary validated HTTPS hosts.
 
 ## Agent workflow

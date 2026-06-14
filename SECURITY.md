@@ -34,6 +34,9 @@ Helpful reports include:
 - The 2 MiB photo response body limit bounds raw bytes before strict UTF-8 JSON
   decoding; a contiguous bounded buffer avoids fragmentation-driven object
   amplification, and streamed overflow cancels and releases the reader.
+- Successful photo responses require a readable byte stream; whole-body
+  fallbacks are rejected because they cannot enforce the memory ceiling before
+  allocation.
 - Photo response streams reject malformed or empty chunks before buffer writes
   and cancel the reader on validation failure.
 - Timeout and unmount cleanup cancel pending response readers even without
