@@ -34,6 +34,8 @@ Helpful reports include:
 - The 2 MiB photo response body limit bounds raw bytes before strict UTF-8 JSON
   decoding; a contiguous bounded buffer avoids fragmentation-driven object
   amplification, and streamed overflow cancels and releases the reader.
+- Photo response streams reject malformed or empty chunks before buffer writes
+  and cancel the reader on validation failure.
 - Timeout and unmount cleanup cancel pending response readers even without
   `AbortController`, preventing stalled streams from retaining reader locks.
 - Photo requests reject redirects before response parsing so the fixed endpoint

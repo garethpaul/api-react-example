@@ -25,6 +25,7 @@ Priority:
 - Require successful API responses to identify JSON content before parsing
 - Enforce a 2 MiB photo response body limit before JSON parsing
 - Keep streamed response bytes in one contiguous bounded buffer
+- Reject malformed or empty response stream chunks before buffer writes
 - Validate API item shape before rendering photo cards
 - Render only HTTPS thumbnail URLs from the API response
 - Reject thumbnail URLs with embedded credentials before DOM rendering
