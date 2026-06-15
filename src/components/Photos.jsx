@@ -35,6 +35,7 @@ function isBlockedIpv4Address(address) {
   return (
     address <= 0x00ffffff ||
     (address >= 0x0a000000 && address <= 0x0affffff) ||
+    (address >= 0x64400000 && address <= 0x647fffff) ||
     (address >= 0x7f000000 && address <= 0x7fffffff) ||
     (address >= 0xa9fe0000 && address <= 0xa9feffff) ||
     (address >= 0xac100000 && address <= 0xac1fffff) ||

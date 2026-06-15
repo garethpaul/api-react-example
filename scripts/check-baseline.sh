@@ -32,6 +32,7 @@ RESPONSE_ENVELOPE_CANCEL_PLAN="$ROOT_DIR/docs/plans/2026-06-15-photo-response-en
 CONTENT_LENGTH_CANCEL_PLAN="$ROOT_DIR/docs/plans/2026-06-15-photo-content-length-cancellation.md"
 TOOL_PATCH_PLAN="$ROOT_DIR/docs/plans/2026-06-15-eslint-vitest-patch-upgrades.md"
 THUMBNAIL_PRIVATE_LITERAL_PLAN="$ROOT_DIR/docs/plans/2026-06-15-photo-thumbnail-private-literal-boundary.md"
+THUMBNAIL_SHARED_ADDRESS_PLAN="$ROOT_DIR/docs/plans/2026-06-15-photo-thumbnail-shared-address-boundary.md"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
   printf '%s\n' "CHANGES.md must document repository maintenance." >&2
@@ -510,6 +511,7 @@ for thumbnail_host_contract in \
   "isBlockedThumbnailHost(url.hostname)" \
   "address <= 0x00ffffff" \
   "address >= 0x0a000000 && address <= 0x0affffff" \
+  "address >= 0x64400000 && address <= 0x647fffff" \
   "address >= 0x7f000000 && address <= 0x7fffffff" \
   "address >= 0xa9fe0000 && address <= 0xa9feffff" \
   "address >= 0xac100000 && address <= 0xac1fffff" \
@@ -519,6 +521,38 @@ for thumbnail_host_contract in \
   "firstHextet >= 0xfe80 && firstHextet <= 0xfebf"; do
   if ! grep -Fq "$thumbnail_host_contract" "$PHOTOS"; then
     printf '%s\n' "Missing thumbnail local-address contract: $thumbnail_host_contract" >&2
+    exit 1
+  fi
+done
+
+for thumbnail_shared_fixture in \
+  "https://100.63.255.255/thumbnail.jpg" \
+  "https://100.128.0.0/thumbnail.jpg" \
+  "https://100.64.0.0/thumbnail.jpg" \
+  "https://100.127.255.255/thumbnail.jpg" \
+  "https://1681915905/thumbnail.jpg" \
+  "https://[::ffff:6440:1]/thumbnail.jpg"; do
+  if ! grep -Fq "$thumbnail_shared_fixture" "$APP_TEST"; then
+    printf '%s\n' "Missing thumbnail shared-address fixture: $thumbnail_shared_fixture" >&2
+    exit 1
+  fi
+done
+
+for thumbnail_shared_doc in "$ROOT_DIR/AGENTS.md" "$README" "$ROOT_DIR/SECURITY.md" \
+  "$ROOT_DIR/VISION.md" "$ROOT_DIR/CHANGES.md"; do
+  if ! grep -Fq "Backend-provided thumbnail URLs cannot explicitly target IPv4 shared address space before rendering." "$thumbnail_shared_doc"; then
+    printf '%s\n' "$thumbnail_shared_doc must document the thumbnail shared-address boundary." >&2
+    exit 1
+  fi
+done
+
+for thumbnail_shared_plan_contract in \
+  "Status: Completed" \
+  "100.64.0.0/10" \
+  "make check" \
+  "mutations"; do
+  if ! grep -Fq "$thumbnail_shared_plan_contract" "$THUMBNAIL_SHARED_ADDRESS_PLAN"; then
+    printf '%s\n' "Thumbnail shared-address plan must preserve completion evidence: $thumbnail_shared_plan_contract" >&2
     exit 1
   fi
 done

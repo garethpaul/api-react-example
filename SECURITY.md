@@ -45,6 +45,7 @@ Helpful reports include:
 - Photo response streams reject malformed or empty chunks before buffer writes
   and cancel the reader on validation failure.
 - Backend-provided thumbnail URLs cannot explicitly target localhost, loopback, private, link-local, or unspecified IP literals before rendering; DNS-style hosts are not resolved by this syntactic check.
+- Backend-provided thumbnail URLs cannot explicitly target IPv4 shared address space before rendering.
 - Timeout and unmount cleanup cancel pending response readers even without
   `AbortController`, preventing stalled streams from retaining reader locks.
 - Photo requests reject redirects before response parsing so the fixed endpoint

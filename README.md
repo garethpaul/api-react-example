@@ -117,6 +117,7 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - Thumbnail URLs with embedded credentials are rejected before image elements
   are rendered.
 - Backend-provided thumbnail URLs cannot explicitly target localhost, loopback, private, link-local, or unspecified IP literals before rendering; DNS-style hosts are not resolved by this syntactic check.
+- Backend-provided thumbnail URLs cannot explicitly target IPv4 shared address space before rendering.
 - Thumbnails load lazily with a no-referrer policy so arbitrary image hosts do
   not receive the application page URL.
 - Accepted photo titles and thumbnail URLs are normalized before they are used

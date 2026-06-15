@@ -1,6 +1,6 @@
 # Photo Thumbnail Shared Address Boundary
 
-Status: Planned
+Status: Completed
 
 ## Problem
 
@@ -66,3 +66,17 @@ and this plan.
 - DNS resolution, rebinding prevention, CSP, proxy policy, image fetching, and
   connection-address pinning.
 - Dependency, Vite, React, API endpoint, response-envelope, or UI changes.
+
+## Completion Evidence
+
+- The focused table-driven thumbnail host cases passed for shared-range
+  boundaries, mapped IPv6, and adjacent public controls.
+- Repository-root and external-directory `make check` passed the baseline,
+  ESLint, Prettier, Vitest, coverage thresholds, and production build.
+- Seven isolated mutations were rejected across range logic, lower and upper
+  boundaries, mapped IPv6, public controls, maintained guidance, and completed
+  plan evidence.
+- Exact-path diff, generated-artifact, conflict-marker, dependency/workflow
+  drift, whitespace, and credential-shaped-addition audits passed.
+- No DNS resolution, browser network inspection, or production deployment was
+  exercised.

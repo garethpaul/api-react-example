@@ -1,6 +1,7 @@
 # API React Example Changes
 
 - Backend-provided thumbnail URLs cannot explicitly target localhost, loopback, private, link-local, or unspecified IP literals before rendering; DNS-style hosts are not resolved by this syntactic check.
+- Backend-provided thumbnail URLs cannot explicitly target IPv4 shared address space before rendering.
 
 ## 2026-06-15
 

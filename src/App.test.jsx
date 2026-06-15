@@ -697,6 +697,9 @@ test.each([
   'https://10.1/thumbnail.jpg',
   'https://10.255.255.255/thumbnail.jpg',
   'https://167772161/thumbnail.jpg',
+  'https://100.64.0.0/thumbnail.jpg',
+  'https://100.127.255.255/thumbnail.jpg',
+  'https://1681915905/thumbnail.jpg',
   'https://127.255.255.255/thumbnail.jpg',
   'https://169.254.1.1/thumbnail.jpg',
   'https://169.254.255.255/thumbnail.jpg',
@@ -711,6 +714,7 @@ test.each([
   'https://[fe80::1]/thumbnail.jpg',
   'https://[febf:ffff::1]/thumbnail.jpg',
   'https://[::ffff:10.0.0.1]/thumbnail.jpg',
+  'https://[::ffff:6440:1]/thumbnail.jpg',
 ])(
   'rejects a local thumbnail address literal before rendering: %s',
   async (thumbnailUrl) => {
@@ -734,6 +738,8 @@ test.each([
 test.each([
   'https://8.8.8.8/thumbnail.jpg',
   'https://11.0.0.1/thumbnail.jpg',
+  'https://100.63.255.255/thumbnail.jpg',
+  'https://100.128.0.0/thumbnail.jpg',
   'https://169.253.255.255/thumbnail.jpg',
   'https://172.15.255.255/thumbnail.jpg',
   'https://172.32.0.0/thumbnail.jpg',
