@@ -237,17 +237,20 @@ test('rejects a successful non-JSON photo response before parsing', async () => 
 
 test('rejects a declared oversized photo response before reading', async () => {
   const arrayBuffer = vi.fn();
+  const cancel = vi.fn().mockRejectedValue(new Error('cancel failed'));
   const response = {
     headers: jsonHeaders(
       'application/json',
       String(MAX_PHOTO_RESPONSE_BYTES + 1),
     ),
+    body: { cancel },
     arrayBuffer,
   };
 
   await expect(readBoundedPhotoJson(response)).rejects.toThrow(
     'Photo response body is too large.',
   );
+  expect(cancel).toHaveBeenCalledOnce();
   expect(arrayBuffer).not.toHaveBeenCalled();
 });
 
@@ -327,14 +330,17 @@ test('preserves the invalid chunk error when reader cancellation fails', async (
 
 test('rejects an unstreamable photo response without whole-body fallback', async () => {
   const arrayBuffer = vi.fn();
+  const cancel = vi.fn().mockResolvedValue(undefined);
   const response = {
     headers: jsonHeaders('application/json', String(MAX_PHOTO_RESPONSE_BYTES)),
+    body: { cancel },
     arrayBuffer,
   };
 
   await expect(readBoundedPhotoJson(response)).rejects.toThrow(
     'Photo response body must be a readable stream.',
   );
+  expect(cancel).toHaveBeenCalledOnce();
   expect(arrayBuffer).not.toHaveBeenCalled();
 });
 

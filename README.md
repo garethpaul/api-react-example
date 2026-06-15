@@ -104,6 +104,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   cannot silently transfer response trust to another origin.
 - Pre-read photo response rejection initiates best-effort body cancellation
   without replacing status, redirect, or media-type validation errors.
+- Oversized and unstreamable photo response envelopes cancel unread bodies
+  before returning their existing validation errors.
 - A 2 MiB photo response body limit is enforced on raw streamed bytes before
   strict UTF-8 decoding and JSON parsing. Responses require a readable byte
   stream so the app never relies on an allocating whole-body fallback, and

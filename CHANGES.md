@@ -1,5 +1,10 @@
 # API React Example Changes
 
+## 2026-06-15
+
+- Oversized and unstreamable photo response envelopes cancel unread bodies
+  before preserving their deterministic validation failures.
+
 ## 2026-06-14
 
 - Pre-read photo response rejection initiates best-effort body cancellation

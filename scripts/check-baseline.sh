@@ -28,6 +28,7 @@ REDIRECT_REJECTION_PLAN="$ROOT_DIR/docs/plans/2026-06-14-photo-response-redirect
 STREAM_CHUNK_PLAN="$ROOT_DIR/docs/plans/2026-06-14-photo-stream-chunk-validation.md"
 READABLE_STREAM_PLAN="$ROOT_DIR/docs/plans/2026-06-14-photo-readable-stream-boundary.md"
 REJECTED_RESPONSE_CANCEL_PLAN="$ROOT_DIR/docs/plans/2026-06-15-photo-rejected-response-body-cancellation.md"
+RESPONSE_ENVELOPE_CANCEL_PLAN="$ROOT_DIR/docs/plans/2026-06-15-photo-response-envelope-cancellation.md"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
   printf '%s\n' "CHANGES.md must document repository maintenance." >&2
@@ -675,8 +676,8 @@ for rejected_response_cancel_contract in \
   fi
 done
 
-if [ "$(grep -Fc 'cancelUnreadPhotoResponse(response);' "$PHOTOS")" -ne 3 ]; then
-  printf '%s\n' "Status, redirect, and media-type rejection must each cancel the unread response body." >&2
+if [ "$(grep -Fc 'cancelUnreadPhotoResponse(response);' "$PHOTOS")" -ne 5 ]; then
+  printf '%s\n' "All five pre-read response rejection paths must cancel the unread response body." >&2
   exit 1
 fi
 
@@ -701,6 +702,57 @@ if ! awk '
   printf '%s\n' "Unread photo bodies must be cancelled immediately before each validation error." >&2
   exit 1
 fi
+
+if ! awk '
+  /contentLength !== null && contentLength > MAX_PHOTO_RESPONSE_BYTES/ { oversized = NR }
+  oversized && /cancelUnreadPhotoResponse\(response\);/ && !oversized_cancel { oversized_cancel = NR }
+  oversized_cancel && /throw new Error\('\''Photo response body is too large/ { oversized_throw = NR }
+  /typeof response\.body\?\.getReader !== '\''function'\''/ { unstreamable = NR }
+  unstreamable && /cancelUnreadPhotoResponse\(response\);/ && !unstreamable_cancel { unstreamable_cancel = NR }
+  unstreamable_cancel && /throw new Error\('\''Photo response body must be a readable stream/ { unstreamable_throw = NR }
+  END {
+    exit !(oversized && oversized_cancel && oversized_throw && unstreamable &&
+      unstreamable_cancel && unstreamable_throw && oversized < oversized_cancel &&
+      oversized_cancel < oversized_throw && oversized_throw < unstreamable &&
+      unstreamable < unstreamable_cancel && unstreamable_cancel < unstreamable_throw)
+  }
+' "$PHOTOS"; then
+  printf '%s\n' "Oversized and unstreamable photo responses must cancel before rejection." >&2
+  exit 1
+fi
+
+for response_envelope_cancel_test in \
+  "rejects a declared oversized photo response before reading" \
+  "rejects an unstreamable photo response without whole-body fallback"; do
+  if ! grep -Fq "$response_envelope_cancel_test" "$APP_TEST"; then
+    printf '%s\n' "Response envelope cleanup test is missing: $response_envelope_cancel_test" >&2
+    exit 1
+  fi
+done
+if [ "$(grep -Fc 'expect(cancel).toHaveBeenCalledOnce();' "$APP_TEST")" -lt 5 ]; then
+  printf '%s\n' "Pre-read response tests must assert cancellation on all envelope failures." >&2
+  exit 1
+fi
+
+for response_envelope_cancel_doc in "$ROOT_DIR/AGENTS.md" "$README" "$ROOT_DIR/SECURITY.md" \
+  "$ROOT_DIR/VISION.md" "$ROOT_DIR/CHANGES.md"; do
+  if ! grep -Fq "Oversized and unstreamable photo response envelopes cancel unread bodies" \
+      "$response_envelope_cancel_doc"; then
+    printf '%s\n' "$response_envelope_cancel_doc must document response envelope cleanup." >&2
+    exit 1
+  fi
+done
+
+for response_envelope_cancel_plan_contract in \
+  "status: completed" \
+  "make check" \
+  "hostile mutations" \
+  "Live endpoint and cross-browser transport testing were not performed"; do
+  if ! grep -Fqi "$response_envelope_cancel_plan_contract" "$RESPONSE_ENVELOPE_CANCEL_PLAN"; then
+    printf '%s\n' "Response envelope cancellation plan must record completion evidence: $response_envelope_cancel_plan_contract" >&2
+    exit 1
+  fi
+done
 
 for rejected_response_test in \
   "renders an error state when the photo request is not ok" \

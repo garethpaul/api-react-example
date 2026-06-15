@@ -1,7 +1,7 @@
 ---
 title: Photo Response Envelope Cancellation
 type: reliability
-status: planned
+status: completed
 date: 2026-06-15
 ---
 
@@ -78,3 +78,13 @@ cancellation without replacing validation errors.
 - Changing endpoint, rendering, photo limits, timeout duration, or retry policy.
 - Adding a whole-body fallback for unstreamable responses.
 - Live endpoint or cross-browser transport testing.
+
+## Completion Evidence
+
+- The focused response-envelope cases and the full 36-test Vitest suite passed.
+- Lint, formatting, production build, and `make check` passed.
+- The package gate passed from the repository root and an external directory.
+- Five hostile mutations were rejected: removing either cancellation call,
+  moving oversized cleanup after its throw, weakening cancellation assertions,
+  and reverting the plan to planned status.
+- Live endpoint and cross-browser transport testing were not performed.

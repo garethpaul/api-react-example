@@ -69,6 +69,8 @@
   enforce the memory ceiling before allocation.
 - Pre-read photo response rejection initiates best-effort body cancellation
   without replacing status, redirect, or media-type validation errors.
+- Oversized and unstreamable photo response envelopes cancel unread bodies
+  before deterministic validation errors are raised.
 - Keep thumbnail requests lazy and use `referrerPolicy="no-referrer"` for arbitrary validated HTTPS hosts.
 
 ## Agent workflow

@@ -28,6 +28,8 @@ Priority:
   whole-body allocation
 - Pre-read photo response rejection initiates best-effort body cancellation
   while preserving deterministic validation failures
+- Oversized and unstreamable photo response envelopes cancel unread bodies
+  before their validation failures
 - Keep streamed response bytes in one contiguous bounded buffer
 - Reject malformed or empty response stream chunks before buffer writes
 - Validate API item shape before rendering photo cards

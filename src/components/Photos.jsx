@@ -155,10 +155,12 @@ export async function readBoundedPhotoJson(response, setReaderCancel = null) {
     response.headers?.get('content-length'),
   );
   if (contentLength !== null && contentLength > MAX_PHOTO_RESPONSE_BYTES) {
+    cancelUnreadPhotoResponse(response);
     throw new Error('Photo response body is too large.');
   }
 
   if (typeof response.body?.getReader !== 'function') {
+    cancelUnreadPhotoResponse(response);
     throw new Error('Photo response body must be a readable stream.');
   }
 
