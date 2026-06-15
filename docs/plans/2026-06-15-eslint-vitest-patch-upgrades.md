@@ -1,7 +1,7 @@
 ---
 title: Upgrade ESLint and Vitest patch releases
 date: 2026-06-15
-status: planned
+status: completed
 ---
 
 # Upgrade ESLint and Vitest Patch Releases
@@ -39,10 +39,10 @@ uses an exact Yarn Classic lockfile and verifies the same toolchain across Node
 - Confirm the installed binaries report ESLint 10.5.0 and Vitest 4.1.9.
 - Run the focused lint and test gates, production build, `yarn verify`, and
   repository-root `make check`.
-- Run `make check` through the absolute Makefile path from an external working
-  directory.
+- Run `make check` through the absolute Makefile path from an
+  external working directory.
 - Run the production dependency audit and verify no known vulnerabilities.
-- Reject isolated mutations of either direct pin, lockfile resolution,
+- Reject isolated hostile mutations of either direct pin, lockfile resolution,
   maintained guidance, and completed-plan evidence.
 - Audit the exact diff, generated artifacts, and credential-shaped additions.
 
@@ -52,3 +52,25 @@ uses an exact Yarn Classic lockfile and verifies the same toolchain across Node
   Any incompatibility will be fixed at its source rather than suppressed.
 - Registry availability remains external, while exact direct and transitive
   lockfile versions keep successful installations deterministic.
+
+## Work Completed
+
+- Updated the exact ESLint and Vitest direct pins and regenerated the Yarn
+  Classic lockfile through Corepack with no runtime dependency changes.
+- Added direct-version, lockfile, maintained-documentation, and completed-plan
+  contracts to the portable baseline checker.
+- Updated the README and changelog with the maintained tool versions.
+
+## Verification Completed
+
+- The installed binaries reported ESLint 10.5.0 and Vitest 4.1.9.
+- ESLint passed, all 38 component tests passed, and the Vite production build
+  completed successfully on Node 20.19.5.
+- Frozen installation, `yarn verify`, repository-root `make check`, and the
+  absolute Makefile gate from an external working directory passed.
+- The production dependency audit reported zero known vulnerabilities.
+- Six isolated hostile mutations of the ESLint pin, Vitest pin, ESLint
+  lockfile selector, Vitest transitive selector, README guidance, and completed
+  plan status were rejected.
+- The exact diff, generated-artifact scan, and credential-shaped additions
+  audit passed before commit.

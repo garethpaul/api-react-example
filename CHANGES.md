@@ -2,6 +2,9 @@
 
 ## 2026-06-15
 
+- Upgraded the exactly pinned development checks to ESLint 10.5.0 and
+  Vitest 4.1.9 while preserving the complete lint, component-test, and build
+  gates.
 - Malformed and unsafe-range photo Content-Length declarations cancel unread bodies before preserving validation errors.
 - Oversized and unstreamable photo response envelopes cancel unread bodies
   before preserving their deterministic validation failures.

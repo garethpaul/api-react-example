@@ -30,6 +30,7 @@ READABLE_STREAM_PLAN="$ROOT_DIR/docs/plans/2026-06-14-photo-readable-stream-boun
 REJECTED_RESPONSE_CANCEL_PLAN="$ROOT_DIR/docs/plans/2026-06-15-photo-rejected-response-body-cancellation.md"
 RESPONSE_ENVELOPE_CANCEL_PLAN="$ROOT_DIR/docs/plans/2026-06-15-photo-response-envelope-cancellation.md"
 CONTENT_LENGTH_CANCEL_PLAN="$ROOT_DIR/docs/plans/2026-06-15-photo-content-length-cancellation.md"
+TOOL_PATCH_PLAN="$ROOT_DIR/docs/plans/2026-06-15-eslint-vitest-patch-upgrades.md"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
   printf '%s\n' "CHANGES.md must document repository maintenance." >&2
@@ -114,10 +115,48 @@ fi
 for dependency in \
   '"react": "19.2.7"' \
   '"react-dom": "19.2.7"' \
+  '"eslint": "10.5.0"' \
   '"vite": "8.0.16"' \
-  '"vitest": "4.1.8"'; do
+  '"vitest": "4.1.9"'; do
   if ! grep -Fq "$dependency" "$PACKAGE_JSON"; then
     printf '%s\n' "Expected dependency pin is missing: $dependency" >&2
+    exit 1
+  fi
+done
+
+for lockfile_contract in \
+  'eslint@10.5.0:' \
+  'version "10.5.0"' \
+  'vitest@4.1.9:' \
+  'version "4.1.9"' \
+  '"@vitest/runner@4.1.9"'; do
+  if ! grep -Fq "$lockfile_contract" "$ROOT_DIR/yarn.lock"; then
+    printf '%s\n' "Expected lockfile contract is missing: $lockfile_contract" >&2
+    exit 1
+  fi
+done
+
+for tool_patch_document in \
+  "$README" \
+  "$ROOT_DIR/CHANGES.md"; do
+  if ! grep -Fq 'ESLint 10.5.0' "$tool_patch_document" || \
+     ! grep -Fq 'Vitest 4.1.9' "$tool_patch_document"; then
+    printf '%s\n' "$tool_patch_document must document the current ESLint and Vitest patch versions." >&2
+    exit 1
+  fi
+done
+
+for tool_patch_plan_contract in \
+  'status: completed' \
+  'ESLint 10.5.0' \
+  'Vitest 4.1.9' \
+  'all 38 component tests passed' \
+  'make check' \
+  'external working directory' \
+  'hostile mutations' \
+  'credential-shaped additions'; do
+  if ! grep -Fq "$tool_patch_plan_contract" "$TOOL_PATCH_PLAN"; then
+    printf '%s\n' "Tool patch plan must preserve completion evidence: $tool_patch_plan_contract" >&2
     exit 1
   fi
 done

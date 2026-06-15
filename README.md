@@ -91,8 +91,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 
 - Review changes touching network requests, sockets, or service endpoints; examples from the scan include docs/plans/2026-06-08-api-react-example-security-test-baseline.md, public/index.html, public/robots.txt, scripts/check-baseline.sh, and 5 more.
 - Review changes touching file, media, JSON, XML, CSV, OCR, or data parsing; examples from the scan include docs/plans/2026-06-08-api-react-example-baseline-guard.md, docs/plans/2026-06-08-api-react-example-security-test-baseline.md, public/index.html, public/manifest.json, and 3 more.
-- The current frontend toolchain uses React 19, Vite 8, Vitest 4, and explicit
-  ESLint and Prettier configuration.
+- The current frontend toolchain uses React 19 and Vite 8, with exactly pinned
+  ESLint 10.5.0 and Vitest 4.1.9 checks plus explicit Prettier configuration.
 
 ## Maintenance Notes
 
