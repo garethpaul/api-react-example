@@ -254,6 +254,32 @@ test('rejects a declared oversized photo response before reading', async () => {
   expect(arrayBuffer).not.toHaveBeenCalled();
 });
 
+test('cancels a photo response with a nonnumeric content length', async () => {
+  const cancel = vi.fn().mockRejectedValue(new Error('cancel failed'));
+  const response = {
+    headers: jsonHeaders('application/json', 'not-a-number'),
+    body: { cancel },
+  };
+
+  await expect(readBoundedPhotoJson(response)).rejects.toThrow(
+    'Photo response Content-Length must be numeric.',
+  );
+  expect(cancel).toHaveBeenCalledOnce();
+});
+
+test('cancels a photo response with an unsafe content length', async () => {
+  const cancel = vi.fn().mockResolvedValue(undefined);
+  const response = {
+    headers: jsonHeaders('application/json', '9007199254740992'),
+    body: { cancel },
+  };
+
+  await expect(readBoundedPhotoJson(response)).rejects.toThrow(
+    'Photo response Content-Length is outside the safe range.',
+  );
+  expect(cancel).toHaveBeenCalledOnce();
+});
+
 test('cancels a streamed photo response when its byte limit is crossed', async () => {
   const { response, reader } = streamingJsonResponse([
     new Uint8Array(MAX_PHOTO_RESPONSE_BYTES),

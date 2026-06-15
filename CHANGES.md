@@ -2,6 +2,7 @@
 
 ## 2026-06-15
 
+- Malformed and unsafe-range photo Content-Length declarations cancel unread bodies before preserving validation errors.
 - Oversized and unstreamable photo response envelopes cancel unread bodies
   before preserving their deterministic validation failures.
 

@@ -151,9 +151,14 @@ async function readPhotoStream(body, setReaderCancel) {
 }
 
 export async function readBoundedPhotoJson(response, setReaderCancel = null) {
-  const contentLength = parseContentLength(
-    response.headers?.get('content-length'),
-  );
+  const contentLengthHeader = response.headers?.get('content-length');
+  let contentLength;
+  try {
+    contentLength = parseContentLength(contentLengthHeader);
+  } catch (error) {
+    cancelUnreadPhotoResponse(response);
+    throw error;
+  }
   if (contentLength !== null && contentLength > MAX_PHOTO_RESPONSE_BYTES) {
     cancelUnreadPhotoResponse(response);
     throw new Error('Photo response body is too large.');

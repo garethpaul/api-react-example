@@ -71,6 +71,7 @@
   without replacing status, redirect, or media-type validation errors.
 - Oversized and unstreamable photo response envelopes cancel unread bodies
   before deterministic validation errors are raised.
+- Malformed and unsafe-range photo Content-Length declarations cancel unread bodies before preserving validation errors.
 - Keep thumbnail requests lazy and use `referrerPolicy="no-referrer"` for arbitrary validated HTTPS hosts.
 
 ## Agent workflow

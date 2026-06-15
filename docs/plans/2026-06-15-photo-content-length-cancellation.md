@@ -1,7 +1,7 @@
 ---
 title: Photo Content-Length Cancellation
 type: security
-status: planned
+status: completed
 date: 2026-06-15
 ---
 
@@ -72,6 +72,22 @@ maintenance guidance, completed status, and truthful verification evidence.
   plan-completion mutations.
 - Audit exact intended paths, generated artifacts, conflict markers,
   dependency/workflow drift, whitespace, and credential-shaped additions.
+
+## Completion Evidence
+
+- Added best-effort unread-body cancellation around declared-length parsing and
+  rethrew the original malformed-format or unsafe-range validation error.
+- Added focused regressions for both parser failures, including a rejected
+  cancellation promise; all 38 Vitest cases passed.
+- The lockfile-installed ESLint 10.4.1 gate, Prettier check, Vite production
+  build, and dependency audit passed with zero reported vulnerabilities.
+- Eleven hostile mutations were rejected for missing cleanup, replaced error
+  identity, removed or weakened fixtures and assertions, missing guidance,
+  incomplete plan status, and runtime cleanup removal.
+- Repository-root and external-directory `make check` passed.
+- Exact-path diff, generated-artifact, conflict-marker, whitespace,
+  dependency/workflow-drift, and credential-shaped-addition audits passed.
+- Live endpoint and cross-browser transport testing were not performed.
 
 ## Scope Boundaries
 

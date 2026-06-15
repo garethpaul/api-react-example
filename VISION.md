@@ -30,6 +30,7 @@ Priority:
   while preserving deterministic validation failures
 - Oversized and unstreamable photo response envelopes cancel unread bodies
   before their validation failures
+- Malformed and unsafe-range photo Content-Length declarations cancel unread bodies before preserving validation errors.
 - Keep streamed response bytes in one contiguous bounded buffer
 - Reject malformed or empty response stream chunks before buffer writes
 - Validate API item shape before rendering photo cards

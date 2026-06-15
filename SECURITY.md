@@ -41,6 +41,7 @@ Helpful reports include:
   without replacing status, redirect, or media-type validation errors.
 - Oversized and unstreamable photo response envelopes cancel unread bodies
   without allowing cleanup failures to replace validation errors.
+- Malformed and unsafe-range photo Content-Length declarations cancel unread bodies before preserving validation errors.
 - Photo response streams reject malformed or empty chunks before buffer writes
   and cancel the reader on validation failure.
 - Timeout and unmount cleanup cancel pending response readers even without

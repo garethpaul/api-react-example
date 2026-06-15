@@ -29,6 +29,7 @@ STREAM_CHUNK_PLAN="$ROOT_DIR/docs/plans/2026-06-14-photo-stream-chunk-validation
 READABLE_STREAM_PLAN="$ROOT_DIR/docs/plans/2026-06-14-photo-readable-stream-boundary.md"
 REJECTED_RESPONSE_CANCEL_PLAN="$ROOT_DIR/docs/plans/2026-06-15-photo-rejected-response-body-cancellation.md"
 RESPONSE_ENVELOPE_CANCEL_PLAN="$ROOT_DIR/docs/plans/2026-06-15-photo-response-envelope-cancellation.md"
+CONTENT_LENGTH_CANCEL_PLAN="$ROOT_DIR/docs/plans/2026-06-15-photo-content-length-cancellation.md"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
   printf '%s\n' "CHANGES.md must document repository maintenance." >&2
@@ -676,8 +677,8 @@ for rejected_response_cancel_contract in \
   fi
 done
 
-if [ "$(grep -Fc 'cancelUnreadPhotoResponse(response);' "$PHOTOS")" -ne 5 ]; then
-  printf '%s\n' "All five pre-read response rejection paths must cancel the unread response body." >&2
+if [ "$(grep -Fc 'cancelUnreadPhotoResponse(response);' "$PHOTOS")" -ne 6 ]; then
+  printf '%s\n' "All six pre-read response rejection paths must cancel the unread response body." >&2
   exit 1
 fi
 
@@ -720,6 +721,65 @@ if ! awk '
   printf '%s\n' "Oversized and unstreamable photo responses must cancel before rejection." >&2
   exit 1
 fi
+
+if ! awk '
+  /export async function readBoundedPhotoJson/ { in_reader = 1 }
+  /export function isRenderablePhoto/ { in_reader = 0 }
+  in_reader && /const contentLengthHeader = response\.headers/ { header = NR }
+  in_reader && /contentLength = parseContentLength\(contentLengthHeader\);/ { parse = NR }
+  in_reader && /catch \(error\)/ { caught = NR }
+  in_reader && caught && /cancelUnreadPhotoResponse\(response\);/ && !cancelled { cancelled = NR }
+  in_reader && cancelled && /throw error;/ { rethrow = NR }
+  END {
+    exit !(header && parse && caught && cancelled && rethrow &&
+      header < parse && parse < caught && caught < cancelled && cancelled < rethrow)
+  }
+' "$PHOTOS"; then
+  printf '%s\n' "Malformed photo Content-Length values must cancel before rethrowing validation errors." >&2
+  exit 1
+fi
+
+content_length_cancel_tests=$(awk '
+  /^test.*cancels a photo response with a nonnumeric content length/ { capture = 1 }
+  capture && /^test.*cancels a streamed photo response/ { exit }
+  capture { print }
+' "$APP_TEST")
+for content_length_cancel_test in \
+  "cancels a photo response with a nonnumeric content length" \
+  "headers: jsonHeaders('application/json', 'not-a-number')" \
+  "Photo response Content-Length must be numeric." \
+  "cancels a photo response with an unsafe content length" \
+  "headers: jsonHeaders('application/json', '9007199254740992')" \
+  "Photo response Content-Length is outside the safe range."; do
+  if ! printf '%s\n' "$content_length_cancel_tests" | grep -Fq "$content_length_cancel_test"; then
+    printf '%s\n' "Content-Length cleanup test contract is missing: $content_length_cancel_test" >&2
+    exit 1
+  fi
+done
+if [ "$(printf '%s\n' "$content_length_cancel_tests" | grep -Fc 'expect(cancel).toHaveBeenCalledOnce();')" -ne 2 ]; then
+  printf '%s\n' "Both malformed Content-Length regressions must assert unread-body cancellation." >&2
+  exit 1
+fi
+
+content_length_cancel_guidance='Malformed and unsafe-range photo Content-Length declarations cancel unread bodies before preserving validation errors.'
+for content_length_cancel_doc in "$ROOT_DIR/AGENTS.md" "$README" "$ROOT_DIR/SECURITY.md" \
+  "$ROOT_DIR/VISION.md" "$ROOT_DIR/CHANGES.md"; do
+  if ! grep -Fq "$content_length_cancel_guidance" "$content_length_cancel_doc"; then
+    printf '%s\n' "$content_length_cancel_doc must document malformed Content-Length cleanup." >&2
+    exit 1
+  fi
+done
+
+for content_length_cancel_plan_contract in \
+  "status: completed" \
+  "make check" \
+  "hostile mutations" \
+  "Live endpoint and cross-browser transport testing were not performed"; do
+  if ! grep -Fqi "$content_length_cancel_plan_contract" "$CONTENT_LENGTH_CANCEL_PLAN"; then
+    printf '%s\n' "Content-Length cancellation plan must record completion evidence: $content_length_cancel_plan_contract" >&2
+    exit 1
+  fi
+done
 
 for response_envelope_cancel_test in \
   "rejects a declared oversized photo response before reading" \
