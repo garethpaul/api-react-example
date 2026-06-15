@@ -139,9 +139,11 @@ test('renders an error state when the photo request fails', async () => {
 });
 
 test('renders an error state when the photo request is not ok', async () => {
+  const cancel = vi.fn().mockRejectedValue(new Error('cancel failed'));
   global.fetch = vi.fn().mockResolvedValue({
     ok: false,
     status: 500,
+    body: { cancel },
   });
 
   render(<Photos />);
@@ -149,6 +151,7 @@ test('renders an error state when the photo request is not ok', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent(
     'Unable to load photos.',
   );
+  expect(cancel).toHaveBeenCalledOnce();
 });
 
 test('disables redirects when abort support is unavailable', async () => {
@@ -166,10 +169,12 @@ test('disables redirects when abort support is unavailable', async () => {
 test('rejects a redirected photo response before reading headers or body', async () => {
   const getHeader = vi.fn();
   const arrayBuffer = vi.fn();
+  const cancel = vi.fn().mockResolvedValue(undefined);
   global.fetch = vi.fn().mockResolvedValue({
     ok: true,
     redirected: true,
     headers: { get: getHeader },
+    body: { cancel },
     arrayBuffer,
   });
 
@@ -179,6 +184,7 @@ test('rejects a redirected photo response before reading headers or body', async
     'Unable to load photos.',
   );
   expect(getHeader).not.toHaveBeenCalled();
+  expect(cancel).toHaveBeenCalledOnce();
   expect(arrayBuffer).not.toHaveBeenCalled();
 });
 
@@ -212,9 +218,11 @@ test('rejects a successful photo response without a content type', async () => {
 
 test('rejects a successful non-JSON photo response before parsing', async () => {
   const arrayBuffer = vi.fn();
+  const cancel = vi.fn().mockResolvedValue(undefined);
   global.fetch = vi.fn().mockResolvedValue({
     ok: true,
     headers: jsonHeaders('text/html; charset=utf-8'),
+    body: { cancel },
     arrayBuffer,
   });
 
@@ -223,6 +231,7 @@ test('rejects a successful non-JSON photo response before parsing', async () => 
   expect(await screen.findByRole('alert')).toHaveTextContent(
     'Unable to load photos.',
   );
+  expect(cancel).toHaveBeenCalledOnce();
   expect(arrayBuffer).not.toHaveBeenCalled();
 });
 

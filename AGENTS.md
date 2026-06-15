@@ -67,6 +67,8 @@
   stream into one contiguous bounded buffer, and cancel/release on overflow.
 - Require a readable byte stream and reject whole-body fallbacks that cannot
   enforce the memory ceiling before allocation.
+- Pre-read photo response rejection initiates best-effort body cancellation
+  without replacing status, redirect, or media-type validation errors.
 - Keep thumbnail requests lazy and use `referrerPolicy="no-referrer"` for arbitrary validated HTTPS hosts.
 
 ## Agent workflow

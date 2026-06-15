@@ -26,6 +26,8 @@ Priority:
 - Enforce a 2 MiB photo response body limit before JSON parsing
 - Require a readable byte stream so the response limit applies before
   whole-body allocation
+- Pre-read photo response rejection initiates best-effort body cancellation
+  while preserving deterministic validation failures
 - Keep streamed response bytes in one contiguous bounded buffer
 - Reject malformed or empty response stream chunks before buffer writes
 - Validate API item shape before rendering photo cards

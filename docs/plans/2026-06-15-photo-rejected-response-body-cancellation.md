@@ -1,6 +1,6 @@
 # Cancel Rejected Photo Response Bodies
 
-Status: Planned
+Status: Completed
 
 ## Context
 
@@ -36,3 +36,14 @@ implementation details.
 - Live endpoint and cross-browser response-body cancellation were not exercised.
 - Existing stacked pull requests remain open and require explicit owner
   authorization before merge or closure.
+
+## Verification Completed
+
+- Focused `corepack yarn test src/App.test.jsx --run` passed all 36 component,
+  response, stream, cancellation, lifecycle, and rendering tests.
+- Ten hostile mutations were rejected for helper ownership, cancellation
+  isolation, all three rejection branches, assertions, documentation, and
+  completed-plan evidence.
+- Repository and external-directory `make check` run the pinned lint, format,
+  test, and production-build gate.
+- Live endpoint and cross-browser response-body cancellation were not exercised.

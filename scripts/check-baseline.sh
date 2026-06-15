@@ -27,6 +27,7 @@ STREAM_TIMEOUT_PLAN="$ROOT_DIR/docs/plans/2026-06-13-photo-stream-timeout-cancel
 REDIRECT_REJECTION_PLAN="$ROOT_DIR/docs/plans/2026-06-14-photo-response-redirect-rejection.md"
 STREAM_CHUNK_PLAN="$ROOT_DIR/docs/plans/2026-06-14-photo-stream-chunk-validation.md"
 READABLE_STREAM_PLAN="$ROOT_DIR/docs/plans/2026-06-14-photo-readable-stream-boundary.md"
+REJECTED_RESPONSE_CANCEL_PLAN="$ROOT_DIR/docs/plans/2026-06-15-photo-rejected-response-body-cancellation.md"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
   printf '%s\n' "CHANGES.md must document repository maintenance." >&2
@@ -659,6 +660,78 @@ for readable_stream_doc in "$ROOT_DIR/AGENTS.md" "$README" "$ROOT_DIR/SECURITY.m
   if ! tr '\n' ' ' < "$readable_stream_doc" | tr -s '[:space:]' ' ' | \
       grep -Eiq 'require(s|d)? a readable (byte )?stream'; then
     printf '%s\n' "$readable_stream_doc must document the readable stream boundary." >&2
+    exit 1
+  fi
+done
+
+for rejected_response_cancel_contract in \
+  "function cancelUnreadPhotoResponse(response)" \
+  "typeof body?.cancel !== 'function'" \
+  "Promise.resolve(body.cancel()).catch(() => {})" \
+  "Preserve the response validation error if transport cleanup also fails."; do
+  if ! grep -Fq "$rejected_response_cancel_contract" "$PHOTOS"; then
+    printf '%s\n' "Rejected photo responses must keep cleanup contract: $rejected_response_cancel_contract" >&2
+    exit 1
+  fi
+done
+
+if [ "$(grep -Fc 'cancelUnreadPhotoResponse(response);' "$PHOTOS")" -ne 3 ]; then
+  printf '%s\n' "Status, redirect, and media-type rejection must each cancel the unread response body." >&2
+  exit 1
+fi
+
+if ! awk '
+  /if \(!response\.ok\)/ { status = NR }
+  status && /cancelUnreadPhotoResponse\(response\);/ && !status_cancel { status_cancel = NR }
+  status_cancel && /throw new Error\(`Photo request failed/ { status_throw = NR }
+  /if \(response\.redirected\)/ { redirect = NR }
+  redirect && /cancelUnreadPhotoResponse\(response\);/ && !redirect_cancel { redirect_cancel = NR }
+  redirect_cancel && /throw new Error\('\''Photo response redirects/ { redirect_throw = NR }
+  /if \(!isJsonContentType\(contentType\)\)/ { media = NR }
+  media && /cancelUnreadPhotoResponse\(response\);/ { media_cancel = NR }
+  media_cancel && /throw new Error\('\''Photo response must use/ { media_throw = NR }
+  END {
+    exit !(status && status_cancel && status_throw && redirect && redirect_cancel &&
+      redirect_throw && media && media_cancel && media_throw && status < status_cancel &&
+      status_cancel < status_throw && status_throw < redirect && redirect < redirect_cancel &&
+      redirect_cancel < redirect_throw && redirect_throw < media && media < media_cancel &&
+      media_cancel < media_throw)
+  }
+' "$PHOTOS"; then
+  printf '%s\n' "Unread photo bodies must be cancelled immediately before each validation error." >&2
+  exit 1
+fi
+
+for rejected_response_test in \
+  "renders an error state when the photo request is not ok" \
+  "rejects a redirected photo response before reading headers or body" \
+  "rejects a successful non-JSON photo response before parsing"; do
+  if ! grep -Fq "$rejected_response_test" "$APP_TEST"; then
+    printf '%s\n' "Rejected response cleanup test is missing: $rejected_response_test" >&2
+    exit 1
+  fi
+done
+if [ "$(grep -Fc 'expect(cancel).toHaveBeenCalledOnce();' "$APP_TEST")" -lt 3 ]; then
+  printf '%s\n' "Rejected response tests must assert body cancellation on every pre-read path." >&2
+  exit 1
+fi
+
+for rejected_response_doc in "$ROOT_DIR/AGENTS.md" "$README" "$ROOT_DIR/SECURITY.md" \
+  "$ROOT_DIR/VISION.md" "$ROOT_DIR/CHANGES.md"; do
+  if ! grep -Fq "Pre-read photo response rejection initiates best-effort body cancellation" \
+      "$rejected_response_doc"; then
+    printf '%s\n' "$rejected_response_doc must document pre-read response body cancellation." >&2
+    exit 1
+  fi
+done
+
+for rejected_response_plan_contract in \
+  "Status: Completed" \
+  "make check" \
+  "Ten hostile mutations" \
+  "cross-browser response-body cancellation were not exercised"; do
+  if ! grep -Fqi "$rejected_response_plan_contract" "$REJECTED_RESPONSE_CANCEL_PLAN"; then
+    printf '%s\n' "Rejected response cancellation plan must record completion evidence: $rejected_response_plan_contract" >&2
     exit 1
   fi
 done

@@ -97,6 +97,19 @@ async function cancelPhotoReader(reader) {
   }
 }
 
+function cancelUnreadPhotoResponse(response) {
+  const body = response?.body;
+  if (typeof body?.cancel !== 'function') {
+    return;
+  }
+
+  try {
+    Promise.resolve(body.cancel()).catch(() => {});
+  } catch {
+    // Preserve the response validation error if transport cleanup also fails.
+  }
+}
+
 async function readPhotoStream(body, setReaderCancel) {
   const reader = body.getReader();
   const bytes = new Uint8Array(MAX_PHOTO_RESPONSE_BYTES);
@@ -301,14 +314,17 @@ class Photos extends React.Component {
     const requestOptions = this.createPhotoRequestOptions(request);
     const response = await fetch(PHOTO_ENDPOINT, requestOptions);
     if (!response.ok) {
+      cancelUnreadPhotoResponse(response);
       throw new Error(`Photo request failed with ${response.status}`);
     }
     if (response.redirected) {
+      cancelUnreadPhotoResponse(response);
       throw new Error('Photo response redirects are not allowed.');
     }
 
     const contentType = response.headers?.get('content-type');
     if (!isJsonContentType(contentType)) {
+      cancelUnreadPhotoResponse(response);
       throw new Error('Photo response must use a JSON content type.');
     }
 

@@ -37,6 +37,8 @@ Helpful reports include:
 - Successful photo responses require a readable byte stream; whole-body
   fallbacks are rejected because they cannot enforce the memory ceiling before
   allocation.
+- Pre-read photo response rejection initiates best-effort body cancellation
+  without replacing status, redirect, or media-type validation errors.
 - Photo response streams reject malformed or empty chunks before buffer writes
   and cancel the reader on validation failure.
 - Timeout and unmount cleanup cancel pending response readers even without
