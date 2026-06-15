@@ -59,7 +59,7 @@ and this plan.
 - An incorrect range check could reject adjacent public IPs; executable boundary
   controls must remain.
 - DNS names are not resolved, so DNS rebinding remains out of scope.
-- This PR is stacked on PR #18 and must retain base-first merge ordering.
+- This PR is stacked on PR #14 and must retain base-first merge ordering.
 
 ## Out Of Scope
 
