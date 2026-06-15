@@ -1,7 +1,7 @@
 ---
 title: Reject Non-Public Thumbnail Address Literals
 type: security
-status: planned
+status: completed
 date: 2026-06-15
 ---
 
@@ -101,6 +101,33 @@ boundary.
   dependency/workflow drift, whitespace, and credential-shaped additions.
 - Capture one bounded exact-head hosted snapshot after push; record pending
   state rather than polling when checks are not terminal.
+
+## Completion Evidence
+
+- Added `isBlockedThumbnailHost` after WHATWG URL parsing and credential checks,
+  using normalized IPv4 values and canonical bracketed IPv6 syntax without DNS
+  resolution or a new dependency.
+- Added 34 focused rendering cases: 25 localhost/local-address rejections and
+  9 public-IP or DNS-style acceptance controls. The complete suite passed all
+  72 Vitest cases.
+- Frozen Yarn installation, ESLint 10.5.0, Prettier, Vite production build,
+  and the production dependency audit passed; the audit reported zero known
+  vulnerabilities.
+- Twenty-five hostile mutations were rejected: 12 runtime mutations covering
+  complete guard removal, localhost, every IPv4 range, mapped IPv4, IPv6 local
+  ranges, and public over-rejection; plus 5 static mutations covering source,
+  blocked/public fixtures, guidance, and plan completion; plus 8 review
+  mutations covering every upper boundary and mapped-public compatibility.
+- Complete repository-root and external-directory `make check` gates passed in
+  an exact-source disposable proof copy before the real plan status changed.
+- The same complete root and external-directory gates passed again in the real
+  worktree after review fixes.
+- Exact nine-path diff, generated-artifact, conflict-marker, dependency and
+  workflow drift, whitespace, and credential-shaped-addition audits passed.
+- `agent-browser` was unavailable, so live browser automation was not run; the
+  72 jsdom component tests are the rendered-behavior evidence for this change.
+- No live endpoint, cross-browser, DNS, proxy, corporate-network, or browser
+  automation execution was performed.
 
 ## Risks And Mitigations
 

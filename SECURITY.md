@@ -44,6 +44,7 @@ Helpful reports include:
 - Malformed and unsafe-range photo Content-Length declarations cancel unread bodies before preserving validation errors.
 - Photo response streams reject malformed or empty chunks before buffer writes
   and cancel the reader on validation failure.
+- Backend-provided thumbnail URLs cannot explicitly target localhost, loopback, private, link-local, or unspecified IP literals before rendering; DNS-style hosts are not resolved by this syntactic check.
 - Timeout and unmount cleanup cancel pending response readers even without
   `AbortController`, preventing stalled streams from retaining reader locks.
 - Photo requests reject redirects before response parsing so the fixed endpoint

@@ -54,6 +54,7 @@
 - Photo records are validated before rendering; malformed items use the existing error state instead of creating broken cards.
 - Thumbnail URLs must parse as HTTPS URLs before the app renders image elements.
 - Thumbnail URLs with embedded credentials are rejected before image elements are rendered.
+- Backend-provided thumbnail URLs cannot explicitly target localhost, loopback, private, link-local, or unspecified IP literals before rendering; DNS-style hosts are not resolved by this syntactic check.
 - Accepted photo titles and thumbnail URLs are normalized before they are used in headings, alt text, and image sources.
 - Photo IDs must be unique after React key coercion before cards are rendered.
 - Each photo load owns its abort controller and timeout; only the active request may update state or clear request resources.

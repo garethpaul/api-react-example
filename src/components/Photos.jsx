@@ -19,6 +19,97 @@ function normalizePhotoId(value) {
   return String(value).trim();
 }
 
+function parseIpv4Hostname(hostname) {
+  const parts = hostname.split('.');
+  if (
+    parts.length !== 4 ||
+    parts.some((part) => !/^\d+$/.test(part) || Number(part) > 255)
+  ) {
+    return null;
+  }
+
+  return parts.reduce((address, part) => address * 256 + Number(part), 0);
+}
+
+function isBlockedIpv4Address(address) {
+  return (
+    address <= 0x00ffffff ||
+    (address >= 0x0a000000 && address <= 0x0affffff) ||
+    (address >= 0x7f000000 && address <= 0x7fffffff) ||
+    (address >= 0xa9fe0000 && address <= 0xa9feffff) ||
+    (address >= 0xac100000 && address <= 0xac1fffff) ||
+    (address >= 0xc0a80000 && address <= 0xc0a8ffff)
+  );
+}
+
+function ipv4MappedAddress(ipv6Address) {
+  if (!ipv6Address.startsWith('::ffff:')) {
+    return null;
+  }
+
+  const parts = ipv6Address.slice('::ffff:'.length).split(':');
+  if (parts.length !== 2) {
+    return null;
+  }
+
+  const high = Number.parseInt(parts[0], 16);
+  const low = Number.parseInt(parts[1], 16);
+  if (
+    !Number.isInteger(high) ||
+    high < 0 ||
+    high > 0xffff ||
+    !Number.isInteger(low) ||
+    low < 0 ||
+    low > 0xffff
+  ) {
+    return null;
+  }
+
+  return high * 0x10000 + low;
+}
+
+function isBlockedIpv6Address(hostname) {
+  if (!hostname.startsWith('[') || !hostname.endsWith(']')) {
+    return false;
+  }
+
+  const address = hostname.slice(1, -1);
+  if (address === '::' || address === '::1') {
+    return true;
+  }
+
+  const mappedAddress = ipv4MappedAddress(address);
+  if (mappedAddress !== null) {
+    return isBlockedIpv4Address(mappedAddress);
+  }
+
+  const firstHextet = Number.parseInt(address.split(':', 1)[0], 16);
+  return (
+    (firstHextet >= 0xfc00 && firstHextet <= 0xfdff) ||
+    (firstHextet >= 0xfe80 && firstHextet <= 0xfebf)
+  );
+}
+
+function isBlockedThumbnailHost(hostname) {
+  let normalizedHostname = hostname.toLowerCase();
+  if (normalizedHostname.endsWith('.')) {
+    normalizedHostname = normalizedHostname.slice(0, -1);
+  }
+
+  if (
+    normalizedHostname === 'localhost' ||
+    normalizedHostname.endsWith('.localhost')
+  ) {
+    return true;
+  }
+
+  const ipv4Address = parseIpv4Hostname(normalizedHostname);
+  return (
+    (ipv4Address !== null && isBlockedIpv4Address(ipv4Address)) ||
+    isBlockedIpv6Address(normalizedHostname)
+  );
+}
+
 function normalizeHttpsUrl(value) {
   if (!hasText(value)) {
     return null;
@@ -31,6 +122,10 @@ function normalizeHttpsUrl(value) {
     }
 
     if (url.username || url.password) {
+      return null;
+    }
+
+    if (isBlockedThumbnailHost(url.hostname)) {
       return null;
     }
 

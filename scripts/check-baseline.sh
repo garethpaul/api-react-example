@@ -31,6 +31,7 @@ REJECTED_RESPONSE_CANCEL_PLAN="$ROOT_DIR/docs/plans/2026-06-15-photo-rejected-re
 RESPONSE_ENVELOPE_CANCEL_PLAN="$ROOT_DIR/docs/plans/2026-06-15-photo-response-envelope-cancellation.md"
 CONTENT_LENGTH_CANCEL_PLAN="$ROOT_DIR/docs/plans/2026-06-15-photo-content-length-cancellation.md"
 TOOL_PATCH_PLAN="$ROOT_DIR/docs/plans/2026-06-15-eslint-vitest-patch-upgrades.md"
+THUMBNAIL_PRIVATE_LITERAL_PLAN="$ROOT_DIR/docs/plans/2026-06-15-photo-thumbnail-private-literal-boundary.md"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
   printf '%s\n' "CHANGES.md must document repository maintenance." >&2
@@ -503,6 +504,73 @@ if ! grep -Fq "url.username || url.password" "$PHOTOS"; then
   printf '%s\n' "Photos component must reject thumbnail URLs with embedded credentials." >&2
   exit 1
 fi
+
+for thumbnail_host_contract in \
+  "function isBlockedThumbnailHost" \
+  "isBlockedThumbnailHost(url.hostname)" \
+  "address <= 0x00ffffff" \
+  "address >= 0x0a000000 && address <= 0x0affffff" \
+  "address >= 0x7f000000 && address <= 0x7fffffff" \
+  "address >= 0xa9fe0000 && address <= 0xa9feffff" \
+  "address >= 0xac100000 && address <= 0xac1fffff" \
+  "address >= 0xc0a80000 && address <= 0xc0a8ffff" \
+  "ipv6Address.startsWith('::ffff:')" \
+  "firstHextet >= 0xfc00 && firstHextet <= 0xfdff" \
+  "firstHextet >= 0xfe80 && firstHextet <= 0xfebf"; do
+  if ! grep -Fq "$thumbnail_host_contract" "$PHOTOS"; then
+    printf '%s\n' "Missing thumbnail local-address contract: $thumbnail_host_contract" >&2
+    exit 1
+  fi
+done
+
+for thumbnail_host_fixture in \
+  "https://LOCALHOST./thumbnail.jpg" \
+  "https://images.localhost/thumbnail.jpg" \
+  "https://2130706433/thumbnail.jpg" \
+  "https://0x7f000001/thumbnail.jpg" \
+  "https://167772161/thumbnail.jpg" \
+  "https://127.255.255.255/thumbnail.jpg" \
+  "https://169.254.1.1/thumbnail.jpg" \
+  "https://169.254.255.255/thumbnail.jpg" \
+  "https://172.16.0.1/thumbnail.jpg" \
+  "https://172.31.255.255/thumbnail.jpg" \
+  "https://192.168.1.1/thumbnail.jpg" \
+  "https://192.168.255.255/thumbnail.jpg" \
+  "https://[::1]/thumbnail.jpg" \
+  "https://[fc00::1]/thumbnail.jpg" \
+  "https://[fe80::1]/thumbnail.jpg" \
+  "https://[febf:ffff::1]/thumbnail.jpg" \
+  "https://[::ffff:10.0.0.1]/thumbnail.jpg" \
+  "https://8.8.8.8/thumbnail.jpg" \
+  "https://172.15.255.255/thumbnail.jpg" \
+  "https://172.32.0.0/thumbnail.jpg" \
+  "https://[2001:4860:4860::8888]/thumbnail.jpg" \
+  "https://[::ffff:8.8.8.8]/thumbnail.jpg" \
+  "https://images.localhost.example/thumbnail.jpg"; do
+  if ! grep -Fq "$thumbnail_host_fixture" "$APP_TEST"; then
+    printf '%s\n' "Missing thumbnail local-address fixture: $thumbnail_host_fixture" >&2
+    exit 1
+  fi
+done
+
+for thumbnail_host_doc in "$ROOT_DIR/AGENTS.md" "$README" "$ROOT_DIR/SECURITY.md" \
+  "$ROOT_DIR/VISION.md" "$ROOT_DIR/CHANGES.md"; do
+  if ! grep -Fq "Backend-provided thumbnail URLs cannot explicitly target localhost, loopback, private, link-local, or unspecified IP literals before rendering; DNS-style hosts are not resolved by this syntactic check." "$thumbnail_host_doc"; then
+    printf '%s\n' "$thumbnail_host_doc must document the thumbnail local-address boundary." >&2
+    exit 1
+  fi
+done
+
+for thumbnail_host_plan_contract in \
+  "status: completed" \
+  "isBlockedThumbnailHost" \
+  "make check" \
+  "hostile mutations"; do
+  if ! grep -Fqi "$thumbnail_host_plan_contract" "$THUMBNAIL_PRIVATE_LITERAL_PLAN"; then
+    printf '%s\n' "Thumbnail local-address plan must record completed verification: $thumbnail_host_plan_contract" >&2
+    exit 1
+  fi
+done
 
 if ! grep -Fq "isHttpsUrl(photo.thumbnailUrl)" "$PHOTOS"; then
   printf '%s\n' "Photos component must use HTTPS URL validation for thumbnails." >&2

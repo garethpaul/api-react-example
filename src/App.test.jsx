@@ -685,6 +685,82 @@ test('renders an error state when a photo thumbnail URL includes credentials', a
   expect(screen.queryByText('Credentialed thumbnail')).not.toBeInTheDocument();
 });
 
+test.each([
+  'https://localhost/thumbnail.jpg',
+  'https://LOCALHOST./thumbnail.jpg',
+  'https://images.localhost/thumbnail.jpg',
+  'https://127.1/thumbnail.jpg',
+  'https://2130706433/thumbnail.jpg',
+  'https://0177.0.0.1/thumbnail.jpg',
+  'https://0x7f000001/thumbnail.jpg',
+  'https://0.0.0.0/thumbnail.jpg',
+  'https://10.1/thumbnail.jpg',
+  'https://10.255.255.255/thumbnail.jpg',
+  'https://167772161/thumbnail.jpg',
+  'https://127.255.255.255/thumbnail.jpg',
+  'https://169.254.1.1/thumbnail.jpg',
+  'https://169.254.255.255/thumbnail.jpg',
+  'https://172.16.0.1/thumbnail.jpg',
+  'https://172.31.255.255/thumbnail.jpg',
+  'https://192.168.1.1/thumbnail.jpg',
+  'https://192.168.255.255/thumbnail.jpg',
+  'https://[::]/thumbnail.jpg',
+  'https://[::1]/thumbnail.jpg',
+  'https://[fc00::1]/thumbnail.jpg',
+  'https://[fdff:ffff::1]/thumbnail.jpg',
+  'https://[fe80::1]/thumbnail.jpg',
+  'https://[febf:ffff::1]/thumbnail.jpg',
+  'https://[::ffff:10.0.0.1]/thumbnail.jpg',
+])(
+  'rejects a local thumbnail address literal before rendering: %s',
+  async (thumbnailUrl) => {
+    mockFetchSuccess([
+      {
+        id: 1,
+        title: 'Local thumbnail',
+        thumbnailUrl,
+      },
+    ]);
+
+    render(<Photos />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Unable to load photos.',
+    );
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+  },
+);
+
+test.each([
+  'https://8.8.8.8/thumbnail.jpg',
+  'https://11.0.0.1/thumbnail.jpg',
+  'https://169.253.255.255/thumbnail.jpg',
+  'https://172.15.255.255/thumbnail.jpg',
+  'https://172.32.0.0/thumbnail.jpg',
+  'https://192.169.0.1/thumbnail.jpg',
+  'https://[2001:4860:4860::8888]/thumbnail.jpg',
+  'https://[::ffff:8.8.8.8]/thumbnail.jpg',
+  'https://images.localhost.example/thumbnail.jpg',
+])(
+  'preserves a public or DNS-style thumbnail host: %s',
+  async (thumbnailUrl) => {
+    mockFetchSuccess([
+      {
+        id: 1,
+        title: 'Public thumbnail',
+        thumbnailUrl,
+      },
+    ]);
+
+    render(<Photos />);
+
+    expect(await screen.findByAltText('Public thumbnail')).toHaveAttribute(
+      'src',
+      new URL(thumbnailUrl).href,
+    );
+  },
+);
+
 test('trims photo titles and normalizes thumbnail URLs before rendering', async () => {
   mockFetchSuccess([
     {

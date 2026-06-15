@@ -36,6 +36,7 @@ Priority:
 - Validate API item shape before rendering photo cards
 - Render only HTTPS thumbnail URLs from the API response
 - Reject thumbnail URLs with embedded credentials before DOM rendering
+- Backend-provided thumbnail URLs cannot explicitly target localhost, loopback, private, link-local, or unspecified IP literals before rendering; DNS-style hosts are not resolved by this syntactic check.
 - Normalize accepted API fields before using them in visible photo cards
 - Reject duplicate API photo IDs before React key rendering
 - Require photo IDs to be key-safe string or finite number values

@@ -1,5 +1,7 @@
 # API React Example Changes
 
+- Backend-provided thumbnail URLs cannot explicitly target localhost, loopback, private, link-local, or unspecified IP literals before rendering; DNS-style hosts are not resolved by this syntactic check.
+
 ## 2026-06-15
 
 - Upgraded the exactly pinned development checks to ESLint 10.5.0 and
