@@ -4,6 +4,7 @@
 - Backend-provided thumbnail URLs cannot explicitly target IPv4 shared address space before rendering.
 - Backend-provided thumbnail URLs reject multicast and reserved future-use IP literals before rendering.
 - Backend-provided thumbnail URLs use only the default HTTPS port before rendering; browser code cannot inspect DNS answers or the connected peer.
+- Expired photo requests cancel late fetch responses before response metadata or stream access.
 
 ## 2026-06-15
 

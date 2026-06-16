@@ -496,6 +496,44 @@ test('aborts and renders an error when the photo request times out', async () =>
   expect(screen.getByRole('alert')).toHaveTextContent('Unable to load photos.');
 });
 
+test('cancels a photo response that resolves after timeout without abort support', async () => {
+  vi.useFakeTimers();
+  global.AbortController = undefined;
+  let resolveFetch;
+  const cancel = vi.fn().mockResolvedValue(undefined);
+  const getReader = vi.fn();
+  const headers = { get: vi.fn() };
+  const readOk = vi.fn(() => true);
+  const readRedirected = vi.fn(() => false);
+  const response = { body: { cancel, getReader }, headers };
+  Object.defineProperty(response, 'ok', { get: readOk });
+  Object.defineProperty(response, 'redirected', { get: readRedirected });
+  global.fetch = vi.fn(
+    () =>
+      new Promise((resolve) => {
+        resolveFetch = resolve;
+      }),
+  );
+
+  render(<Photos />);
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(PHOTO_REQUEST_TIMEOUT_MS);
+  });
+  expect(screen.getByRole('alert')).toHaveTextContent('Unable to load photos.');
+
+  await act(async () => {
+    resolveFetch(response);
+    await Promise.resolve();
+  });
+
+  expect(cancel).toHaveBeenCalledTimes(1);
+  expect(readOk).not.toHaveBeenCalled();
+  expect(readRedirected).not.toHaveBeenCalled();
+  expect(headers.get).not.toHaveBeenCalled();
+  expect(getReader).not.toHaveBeenCalled();
+});
+
 test('rejects an unstreamable response without abort support', async () => {
   global.AbortController = undefined;
   const arrayBuffer = vi.fn();

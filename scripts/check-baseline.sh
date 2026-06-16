@@ -35,6 +35,7 @@ THUMBNAIL_PRIVATE_LITERAL_PLAN="$ROOT_DIR/docs/plans/2026-06-15-photo-thumbnail-
 THUMBNAIL_SHARED_ADDRESS_PLAN="$ROOT_DIR/docs/plans/2026-06-15-photo-thumbnail-shared-address-boundary.md"
 THUMBNAIL_DEFAULT_PORT_PLAN="$ROOT_DIR/docs/plans/2026-06-16-photo-thumbnail-default-port.md"
 THUMBNAIL_NON_UNICAST_PLAN="$ROOT_DIR/docs/plans/2026-06-16-photo-thumbnail-non-unicast-literals.md"
+LATE_RESPONSE_PLAN="$ROOT_DIR/docs/plans/2026-06-16-photo-late-response-cancellation.md"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
   printf '%s\n' "CHANGES.md must document repository maintenance." >&2
@@ -907,10 +908,51 @@ for rejected_response_cancel_contract in \
   fi
 done
 
-if [ "$(grep -Fc 'cancelUnreadPhotoResponse(response);' "$PHOTOS")" -ne 6 ]; then
-  printf '%s\n' "All six pre-read response rejection paths must cancel the unread response body." >&2
+if [ "$(grep -Fc 'cancelUnreadPhotoResponse(response);' "$PHOTOS")" -ne 7 ]; then
+  printf '%s\n' "All seven pre-read response rejection paths must cancel the unread response body." >&2
   exit 1
 fi
+
+fetch_photos_block=$(sed -n '/async fetchPhotos(request)/,/async loadPhotos()/p' "$PHOTOS")
+fetch_photos_compact=$(printf '%s\n' "$fetch_photos_block" | tr -d '[:space:]')
+late_response_sequence="constresponse=awaitfetch(PHOTO_ENDPOINT,requestOptions);if(this.activeRequest!==request){cancelUnreadPhotoResponse(response);thrownewError('Photoresponsearrivedafterrequestownershipended.');}if(!response.ok)"
+if [ "$(printf '%s\n' "$fetch_photos_block" | grep -Fc 'if (this.activeRequest !== request)' || true)" -ne 1 ] || \
+   ! printf '%s\n' "$fetch_photos_compact" | grep -Fq "$late_response_sequence"; then
+  printf '%s\n' "Late photo responses must cancel before status, header, or body access." >&2
+  exit 1
+fi
+
+for late_response_test_contract in \
+  "cancels a photo response that resolves after timeout without abort support" \
+  "resolveFetch(response)" \
+  "expect(cancel).toHaveBeenCalledTimes(1)" \
+  "expect(readOk).not.toHaveBeenCalled()" \
+  "expect(readRedirected).not.toHaveBeenCalled()" \
+  "expect(headers.get).not.toHaveBeenCalled()" \
+  "expect(getReader).not.toHaveBeenCalled()"; do
+  if ! grep -Fq "$late_response_test_contract" "$APP_TEST"; then
+    printf '%s\n' "Missing late photo response test contract: $late_response_test_contract" >&2
+    exit 1
+  fi
+done
+
+for late_response_doc in AGENTS.md README.md SECURITY.md VISION.md CHANGES.md; do
+  if ! grep -Fq "Expired photo requests cancel late fetch responses before response metadata or stream access." "$ROOT_DIR/$late_response_doc"; then
+    printf '%s\n' "$late_response_doc must document late response cancellation." >&2
+    exit 1
+  fi
+done
+
+for late_response_plan_contract in \
+  "Status: Completed" \
+  "make check" \
+  "Six isolated hostile mutations" \
+  "cross-browser transport testing remain unexecuted"; do
+  if ! grep -Fq "$late_response_plan_contract" "$LATE_RESPONSE_PLAN"; then
+    printf '%s\n' "Late photo response plan must record completed verification: $late_response_plan_contract" >&2
+    exit 1
+  fi
+done
 
 if ! awk '
   /if \(!response\.ok\)/ { status = NR }

@@ -50,6 +50,7 @@ Helpful reports include:
 - Backend-provided thumbnail URLs use only the default HTTPS port before rendering; browser code cannot inspect DNS answers or the connected peer.
 - Timeout and unmount cleanup cancel pending response readers even without
   `AbortController`, preventing stalled streams from retaining reader locks.
+- Expired photo requests cancel late fetch responses before response metadata or stream access.
 - Photo requests reject redirects before response parsing so the fixed endpoint
   cannot silently transfer response trust to another origin.
 - Review found database, model, query, or persistence-related code; changes in those areas should receive security-focused review before merge.

@@ -423,6 +423,11 @@ class Photos extends React.Component {
   async fetchPhotos(request) {
     const requestOptions = this.createPhotoRequestOptions(request);
     const response = await fetch(PHOTO_ENDPOINT, requestOptions);
+    if (this.activeRequest !== request) {
+      cancelUnreadPhotoResponse(response);
+      throw new Error('Photo response arrived after request ownership ended.');
+    }
+
     if (!response.ok) {
       cancelUnreadPhotoResponse(response);
       throw new Error(`Photo request failed with ${response.status}`);

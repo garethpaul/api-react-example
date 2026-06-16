@@ -61,6 +61,7 @@
 - Accepted photo titles and thumbnail URLs are normalized before they are used in headings, alt text, and image sources.
 - Photo IDs must be unique after React key coercion before cards are rendered.
 - Each photo load owns its abort controller and timeout; only the active request may update state or clear request resources.
+- Expired photo requests cancel late fetch responses before response metadata or stream access.
 - Photo request timeout and unmount cleanup cancel pending response readers even
   when `AbortController` is unavailable.
 - Photo response streams reject malformed or empty chunks before buffer writes

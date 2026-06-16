@@ -1,6 +1,6 @@
 # Photo Late Response Cancellation
 
-Status: Planned
+Status: Completed
 
 ## Problem
 
@@ -83,3 +83,15 @@ record the maintained lifecycle rule, and keep completed verification durable.
 - Thumbnail URL policy, response size, media type, schema, render limits,
   dependencies, styling, or user-visible copy.
 - Live endpoint or cross-browser transport testing.
+
+## Completion Evidence
+
+- The focused fake-timer regression passed and proved a response resolving
+  after timeout is cancelled before status, redirect, header, or stream access.
+- Repository-root and external-directory `make check` passed on June 16, 2026,
+  including ESLint, Prettier, all 93 Vitest cases, and production Vite builds.
+- Six isolated hostile mutations were rejected across missing ownership,
+  missing cancellation, late ownership ordering, removed regression evidence,
+  removed maintained guidance, and reopened plan status.
+- Live endpoint and cross-browser transport testing remain unexecuted and are
+  not claimed by this plan.

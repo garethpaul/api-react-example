@@ -49,6 +49,7 @@ Priority:
 - Cancel pending response readers on timeout or unmount without relying on
   `AbortController`
 - Keep photo request completion and cleanup owned by the latest mounted request
+- Expired photo requests cancel late fetch responses before response metadata or stream access.
 - Keep the app small enough for beginners to inspect
 - Keep CodeQL default-setup coverage for workflow and JavaScript trust boundaries
 
