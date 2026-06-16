@@ -39,6 +39,7 @@ Priority:
 - Backend-provided thumbnail URLs cannot explicitly target localhost, loopback, private, link-local, or unspecified IP literals before rendering; DNS-style hosts are not resolved by this syntactic check.
 - Backend-provided thumbnail URLs cannot explicitly target IPv4 shared address space before rendering.
 - Backend-provided thumbnail URLs reject multicast and reserved future-use IP literals before rendering.
+- Backend-provided thumbnail URLs reject selected non-global and deprecated special-purpose IPv6 literals before rendering.
 - Backend-provided thumbnail URLs use only the default HTTPS port before rendering; browser code cannot inspect DNS answers or the connected peer.
 - Normalize accepted API fields before using them in visible photo cards
 - Reject duplicate API photo IDs before React key rendering

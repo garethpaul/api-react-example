@@ -849,6 +849,68 @@ test.each([
 );
 
 test.each([
+  'https://[100::1]/thumbnail.jpg',
+  'https://[100::ffff:ffff:ffff:ffff]/thumbnail.jpg',
+  'https://[100:0:0:1::1]/thumbnail.jpg',
+  'https://[100:0:0:1:ffff:ffff:ffff:ffff]/thumbnail.jpg',
+  'https://[2001:2::1]/thumbnail.jpg',
+  'https://[2001:2:0:ffff:ffff:ffff:ffff:ffff]/thumbnail.jpg',
+  'https://[2001:db8::1]/thumbnail.jpg',
+  'https://[2001:db8:ffff:ffff:ffff:ffff:ffff:ffff]/thumbnail.jpg',
+  'https://[3fff::1]/thumbnail.jpg',
+  'https://[3fff:fff:ffff:ffff:ffff:ffff:ffff:ffff]/thumbnail.jpg',
+  'https://[5f00::1]/thumbnail.jpg',
+  'https://[5f00:ffff:ffff:ffff:ffff:ffff:ffff:ffff]/thumbnail.jpg',
+  'https://[fec0::1]/thumbnail.jpg',
+  'https://[feff:ffff:ffff:ffff:ffff:ffff:ffff:ffff]/thumbnail.jpg',
+])(
+  'rejects a non-global special-purpose IPv6 thumbnail literal: %s',
+  async (thumbnailUrl) => {
+    mockFetchSuccess([
+      {
+        id: 1,
+        title: 'Special-purpose thumbnail',
+        thumbnailUrl,
+      },
+    ]);
+
+    render(<Photos />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Unable to load photos.',
+    );
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+  },
+);
+
+test.each([
+  'https://[100:0:0:2::1]/thumbnail.jpg',
+  'https://[2001:2:1::1]/thumbnail.jpg',
+  'https://[2001:db7:ffff::1]/thumbnail.jpg',
+  'https://[2001:db9::1]/thumbnail.jpg',
+  'https://[3fff:1000::1]/thumbnail.jpg',
+  'https://[5eff:ffff::1]/thumbnail.jpg',
+  'https://[6000::1]/thumbnail.jpg',
+])(
+  'preserves an IPv6 literal outside the selected special-purpose prefixes: %s',
+  async (thumbnailUrl) => {
+    mockFetchSuccess([
+      {
+        id: 1,
+        title: 'Out-of-policy thumbnail',
+        thumbnailUrl,
+      },
+    ]);
+
+    render(<Photos />);
+
+    expect(
+      await screen.findByAltText('Out-of-policy thumbnail'),
+    ).toHaveAttribute('src', new URL(thumbnailUrl).href);
+  },
+);
+
+test.each([
   'https://8.8.8.8/thumbnail.jpg',
   'https://11.0.0.1/thumbnail.jpg',
   'https://100.63.255.255/thumbnail.jpg',

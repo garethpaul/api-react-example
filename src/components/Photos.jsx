@@ -5,6 +5,22 @@ export const MAX_PHOTOS = 12;
 export const PHOTO_REQUEST_TIMEOUT_MS = 10000;
 export const MAX_PHOTO_RESPONSE_BYTES = 2 * 1024 * 1024;
 
+const BLOCKED_SPECIAL_IPV6_PREFIXES = [
+  '100::/64',
+  '100:0:0:1::/64',
+  '2001:2::/48',
+  '2001:db8::/32',
+  '3fff::/20',
+  '5f00::/16',
+  'fec0::/10',
+].map((cidr) => {
+  const [address, prefixLength] = cidr.split('/');
+  return {
+    address: parseIpv6Hextets(address),
+    prefixLength: Number(prefixLength),
+  };
+});
+
 function hasText(value) {
   return typeof value === 'string' && value.trim().length > 0;
 }
@@ -71,6 +87,66 @@ function ipv4MappedAddress(ipv6Address) {
   return high * 0x10000 + low;
 }
 
+function parseIpv6Hextets(address) {
+  const compressedParts = address.split('::');
+  if (compressedParts.length > 2) {
+    return null;
+  }
+
+  const parseParts = (value) => {
+    if (value === '') {
+      return [];
+    }
+
+    const parts = value.split(':');
+    if (parts.some((part) => !/^[0-9a-f]{1,4}$/i.test(part))) {
+      return null;
+    }
+    return parts.map((part) => Number.parseInt(part, 16));
+  };
+
+  const left = parseParts(compressedParts[0]);
+  const right = parseParts(compressedParts[1] ?? '');
+  if (left === null || right === null) {
+    return null;
+  }
+
+  if (compressedParts.length === 1) {
+    return left.length === 8 ? left : null;
+  }
+
+  const omittedHextets = 8 - left.length - right.length;
+  if (omittedHextets < 1) {
+    return null;
+  }
+
+  return [...left, ...new Array(omittedHextets).fill(0), ...right];
+}
+
+function matchesIpv6Prefix(address, prefix) {
+  if (address === null || prefix.address === null) {
+    return false;
+  }
+
+  const completeHextets = Math.floor(prefix.prefixLength / 16);
+  for (let index = 0; index < completeHextets; index += 1) {
+    if (address[index] !== prefix.address[index]) {
+      return false;
+    }
+  }
+
+  const remainingBits = prefix.prefixLength % 16;
+  if (remainingBits === 0) {
+    return true;
+  }
+
+  const mask = (0xffff << (16 - remainingBits)) & 0xffff;
+  return (
+    (address[completeHextets] & mask) ===
+    (prefix.address[completeHextets] & mask)
+  );
+}
+
 function isBlockedIpv6Address(hostname) {
   if (!hostname.startsWith('[') || !hostname.endsWith(']')) {
     return false;
@@ -86,7 +162,19 @@ function isBlockedIpv6Address(hostname) {
     return isBlockedIpv4Address(mappedAddress);
   }
 
-  const firstHextet = Number.parseInt(address.split(':', 1)[0], 16);
+  const hextets = parseIpv6Hextets(address);
+  if (hextets === null) {
+    return true;
+  }
+  if (
+    BLOCKED_SPECIAL_IPV6_PREFIXES.some((prefix) =>
+      matchesIpv6Prefix(hextets, prefix),
+    )
+  ) {
+    return true;
+  }
+
+  const firstHextet = hextets[0];
   return (
     (firstHextet >= 0xfc00 && firstHextet <= 0xfdff) ||
     (firstHextet >= 0xfe80 && firstHextet <= 0xfebf) ||

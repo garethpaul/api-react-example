@@ -1,6 +1,6 @@
 # Reject Non-Global Special-Purpose IPv6 Thumbnail Literals
 
-Status: Planned
+Status: Completed
 
 ## Problem
 
@@ -146,3 +146,18 @@ status, and truthful verification evidence.
   2025: `https://www.iana.org/assignments/iana-ipv6-special-registry`
 - IANA IPv6 Address Space registry for deprecated site-local space:
   `https://www.iana.org/assignments/ipv6-address-space`
+
+## Completed Verification
+
+- The focused selected-prefix matrix passed all 21 blocked and out-of-policy
+  boundary cases, and the complete Vitest suite passed all 114 tests.
+- ESLint, Prettier, the production Vite build, and the portable baseline
+  checker passed with the final implementation.
+- Repository-root and external-directory `make check` passed with explicit
+  timeouts.
+- Eight isolated hostile mutations were rejected across prefix presence,
+  prefix length, partial-bit matching, source integration, blocked and accepted
+  regression identity, maintained guidance, and plan completion status.
+- Exact diff, generated-artifact, credential-shaped addition,
+  dependency/workflow drift, conflict-marker, file-mode, and whitespace audits
+  were completed before commit.

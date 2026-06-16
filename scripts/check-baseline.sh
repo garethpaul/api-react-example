@@ -36,6 +36,7 @@ THUMBNAIL_SHARED_ADDRESS_PLAN="$ROOT_DIR/docs/plans/2026-06-15-photo-thumbnail-s
 THUMBNAIL_DEFAULT_PORT_PLAN="$ROOT_DIR/docs/plans/2026-06-16-photo-thumbnail-default-port.md"
 THUMBNAIL_NON_UNICAST_PLAN="$ROOT_DIR/docs/plans/2026-06-16-photo-thumbnail-non-unicast-literals.md"
 LATE_RESPONSE_PLAN="$ROOT_DIR/docs/plans/2026-06-16-photo-late-response-cancellation.md"
+THUMBNAIL_SPECIAL_IPV6_PLAN="$ROOT_DIR/docs/plans/2026-06-16-photo-thumbnail-special-ipv6-literals.md"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
   printf '%s\n' "CHANGES.md must document repository maintenance." >&2
@@ -565,6 +566,70 @@ for thumbnail_non_unicast_plan_contract in \
   'DNS rebinding remains outside'; do
   if ! grep -Fq "$thumbnail_non_unicast_plan_contract" "$THUMBNAIL_NON_UNICAST_PLAN"; then
     printf '%s\n' "Thumbnail non-unicast plan must record completed verification: $thumbnail_non_unicast_plan_contract" >&2
+    exit 1
+  fi
+done
+
+for thumbnail_special_ipv6_source_contract in \
+  "const BLOCKED_SPECIAL_IPV6_PREFIXES = [" \
+  "'100::/64'" \
+  "'100:0:0:1::/64'" \
+  "'2001:2::/48'" \
+  "'2001:db8::/32'" \
+  "'3fff::/20'" \
+  "'5f00::/16'" \
+  "'fec0::/10'" \
+  "function parseIpv6Hextets(address)" \
+  "function matchesIpv6Prefix(address, prefix)" \
+  "if (hextets === null)" \
+  "BLOCKED_SPECIAL_IPV6_PREFIXES.some((prefix) =>"; do
+  if ! grep -Fq "$thumbnail_special_ipv6_source_contract" "$PHOTOS"; then
+    printf '%s\n' "Missing thumbnail special-purpose IPv6 source contract: $thumbnail_special_ipv6_source_contract" >&2
+    exit 1
+  fi
+done
+
+for thumbnail_special_ipv6_fixture in \
+  "https://[100::1]/thumbnail.jpg" \
+  "https://[100:0:0:1::1]/thumbnail.jpg" \
+  "https://[2001:2::1]/thumbnail.jpg" \
+  "https://[2001:db8::1]/thumbnail.jpg" \
+  "https://[3fff::1]/thumbnail.jpg" \
+  "https://[5f00::1]/thumbnail.jpg" \
+  "https://[fec0::1]/thumbnail.jpg" \
+  "https://[100:0:0:2::1]/thumbnail.jpg" \
+  "https://[2001:db9::1]/thumbnail.jpg" \
+  "https://[3fff:1000::1]/thumbnail.jpg"; do
+  if ! grep -Fq "$thumbnail_special_ipv6_fixture" "$APP_TEST"; then
+    printf '%s\n' "Missing thumbnail special-purpose IPv6 fixture: $thumbnail_special_ipv6_fixture" >&2
+    exit 1
+  fi
+done
+
+for thumbnail_special_ipv6_test_contract in \
+  "rejects a non-global special-purpose IPv6 thumbnail literal" \
+  "preserves an IPv6 literal outside the selected special-purpose prefixes"; do
+  if ! grep -Fq "$thumbnail_special_ipv6_test_contract" "$APP_TEST"; then
+    printf '%s\n' "Missing thumbnail special-purpose IPv6 regression: $thumbnail_special_ipv6_test_contract" >&2
+    exit 1
+  fi
+done
+
+for thumbnail_special_ipv6_doc in "$ROOT_DIR/AGENTS.md" "$README" \
+  "$ROOT_DIR/SECURITY.md" "$ROOT_DIR/VISION.md" "$ROOT_DIR/CHANGES.md"; do
+  if ! grep -Fq "Backend-provided thumbnail URLs reject selected non-global and deprecated special-purpose IPv6 literals before rendering." "$thumbnail_special_ipv6_doc"; then
+    printf '%s\n' "$thumbnail_special_ipv6_doc must document the selected special-purpose IPv6 literal boundary." >&2
+    exit 1
+  fi
+done
+
+for thumbnail_special_ipv6_plan_contract in \
+  "Status: Completed" \
+  "repository-root and external-directory \`make check\`" \
+  "isolated hostile mutations" \
+  "IANA IPv6 Special-Purpose Address Space registry"; do
+  if ! grep -Fq "$thumbnail_special_ipv6_plan_contract" "$THUMBNAIL_SPECIAL_IPV6_PLAN"; then
+    printf '%s\n' "Thumbnail special-purpose IPv6 plan must record completed verification: $thumbnail_special_ipv6_plan_contract" >&2
     exit 1
   fi
 done

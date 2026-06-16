@@ -119,6 +119,7 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - Backend-provided thumbnail URLs cannot explicitly target localhost, loopback, private, link-local, or unspecified IP literals before rendering; DNS-style hosts are not resolved by this syntactic check.
 - Backend-provided thumbnail URLs cannot explicitly target IPv4 shared address space before rendering.
 - Backend-provided thumbnail URLs reject multicast and reserved future-use IP literals before rendering.
+- Backend-provided thumbnail URLs reject selected non-global and deprecated special-purpose IPv6 literals before rendering.
 - Backend-provided thumbnail URLs use only the default HTTPS port before rendering; browser code cannot inspect DNS answers or the connected peer.
 - Thumbnails load lazily with a no-referrer policy so arbitrary image hosts do
   not receive the application page URL.
