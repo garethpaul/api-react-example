@@ -33,6 +33,7 @@ CONTENT_LENGTH_CANCEL_PLAN="$ROOT_DIR/docs/plans/2026-06-15-photo-content-length
 TOOL_PATCH_PLAN="$ROOT_DIR/docs/plans/2026-06-15-eslint-vitest-patch-upgrades.md"
 THUMBNAIL_PRIVATE_LITERAL_PLAN="$ROOT_DIR/docs/plans/2026-06-15-photo-thumbnail-private-literal-boundary.md"
 THUMBNAIL_SHARED_ADDRESS_PLAN="$ROOT_DIR/docs/plans/2026-06-15-photo-thumbnail-shared-address-boundary.md"
+THUMBNAIL_DEFAULT_PORT_PLAN="$ROOT_DIR/docs/plans/2026-06-16-photo-thumbnail-default-port.md"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
   printf '%s\n' "CHANGES.md must document repository maintenance." >&2
@@ -553,6 +554,52 @@ for thumbnail_shared_plan_contract in \
   "mutations"; do
   if ! grep -Fq "$thumbnail_shared_plan_contract" "$THUMBNAIL_SHARED_ADDRESS_PLAN"; then
     printf '%s\n' "Thumbnail shared-address plan must preserve completion evidence: $thumbnail_shared_plan_contract" >&2
+    exit 1
+  fi
+done
+
+if ! grep -Fq "if (url.port !== '')" "$PHOTOS"; then
+  printf '%s\n' "Thumbnail URL normalization must reject nondefault HTTPS ports." >&2
+  exit 1
+fi
+
+for thumbnail_port_fixture in \
+  "https://example.com:1/thumbnail.jpg" \
+  "https://example.com:80/thumbnail.jpg" \
+  "https://example.com:443/thumbnail.jpg" \
+  "https://example.com:444/thumbnail.jpg" \
+  "https://example.com:8443/thumbnail.jpg" \
+  "https://example.com:65535/thumbnail.jpg"; do
+  if ! grep -Fq "$thumbnail_port_fixture" "$APP_TEST"; then
+    printf '%s\n' "Missing thumbnail HTTPS port fixture: $thumbnail_port_fixture" >&2
+    exit 1
+  fi
+done
+
+for thumbnail_port_test in \
+  "rejects a nondefault thumbnail HTTPS port" \
+  "preserves the default thumbnail HTTPS port"; do
+  if ! grep -Fq "$thumbnail_port_test" "$APP_TEST"; then
+    printf '%s\n' "Missing thumbnail HTTPS port test: $thumbnail_port_test" >&2
+    exit 1
+  fi
+done
+
+for thumbnail_port_plan_contract in \
+  "Status: Completed" \
+  "url.port" \
+  "make check" \
+  "mutations"; do
+  if ! grep -Fq "$thumbnail_port_plan_contract" "$THUMBNAIL_DEFAULT_PORT_PLAN"; then
+    printf '%s\n' "Thumbnail default-port plan must record completed verification: $thumbnail_port_plan_contract" >&2
+    exit 1
+  fi
+done
+
+for thumbnail_port_doc in "$ROOT_DIR/AGENTS.md" "$README" "$ROOT_DIR/SECURITY.md" \
+  "$ROOT_DIR/VISION.md" "$ROOT_DIR/CHANGES.md"; do
+  if ! grep -Fq "Backend-provided thumbnail URLs use only the default HTTPS port before rendering; browser code cannot inspect DNS answers or the connected peer." "$thumbnail_port_doc"; then
+    printf '%s\n' "$thumbnail_port_doc must document the thumbnail default-port boundary." >&2
     exit 1
   fi
 done

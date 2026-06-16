@@ -1,6 +1,6 @@
 # Photo Thumbnail Default HTTPS Port
 
-Status: Planned
+Status: Completed
 
 ## Problem
 
@@ -82,3 +82,14 @@ and that browser code still cannot inspect DNS answers or the connected peer.
 - API endpoint, response handling, photo schema, render count, UI, dependency,
   Vite, React, or workflow changes.
 - Browser deployment and live thumbnail delivery.
+
+## Completion Evidence
+
+- The focused thumbnail authority matrix passed seven cases on June 16, 2026:
+  five alternate-port rejections plus implicit and explicit default-port
+  acceptance through the `url.port` normalization guard.
+- Repository-root and external-directory `make check` both passed the locked
+  baseline, ESLint, Prettier, all 85 Vitest cases, and production Vite build on
+  June 16, 2026.
+- Isolated mutations cover the source guard, explicit `:443` acceptance,
+  nondefault-port rejection, maintained guidance, and reopened plan status.

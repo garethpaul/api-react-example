@@ -126,6 +126,10 @@ function normalizeHttpsUrl(value) {
       return null;
     }
 
+    if (url.port !== '') {
+      return null;
+    }
+
     if (isBlockedThumbnailHost(url.hostname)) {
       return null;
     }

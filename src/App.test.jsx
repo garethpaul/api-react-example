@@ -686,6 +686,54 @@ test('renders an error state when a photo thumbnail URL includes credentials', a
 });
 
 test.each([
+  'https://example.com:1/thumbnail.jpg',
+  'https://example.com:80/thumbnail.jpg',
+  'https://example.com:444/thumbnail.jpg',
+  'https://example.com:8443/thumbnail.jpg',
+  'https://example.com:65535/thumbnail.jpg',
+])('rejects a nondefault thumbnail HTTPS port: %s', async (thumbnailUrl) => {
+  mockFetchSuccess([
+    {
+      id: 1,
+      title: 'Alternate port thumbnail',
+      thumbnailUrl,
+    },
+  ]);
+
+  render(<Photos />);
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Unable to load photos.',
+  );
+  expect(screen.queryByRole('img')).not.toBeInTheDocument();
+});
+
+test.each([
+  ['https://example.com/thumbnail.jpg', 'https://example.com/thumbnail.jpg'],
+  [
+    'https://example.com:443/thumbnail.jpg',
+    'https://example.com/thumbnail.jpg',
+  ],
+])(
+  'preserves the default thumbnail HTTPS port: %s',
+  async (thumbnailUrl, normalizedUrl) => {
+    mockFetchSuccess([
+      {
+        id: 1,
+        title: 'Default port thumbnail',
+        thumbnailUrl,
+      },
+    ]);
+
+    render(<Photos />);
+
+    expect(
+      await screen.findByAltText('Default port thumbnail'),
+    ).toHaveAttribute('src', normalizedUrl);
+  },
+);
+
+test.each([
   'https://localhost/thumbnail.jpg',
   'https://LOCALHOST./thumbnail.jpg',
   'https://images.localhost/thumbnail.jpg',
