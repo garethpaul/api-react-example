@@ -1,6 +1,6 @@
 # Photo Thumbnail Non-Unicast Literal Boundary
 
-## Status: Planned
+## Status: Completed
 
 ## Problem
 
@@ -68,14 +68,20 @@ requests when a response controls `thumbnailUrl`.
 - Protect the source and tests, explain the boundary, and record truthful final
   verification.
 
-## Verification Planned
+## Verification Completed
 
-- Focused Vitest cases for blocked and accepted literal boundaries.
-- Repository-root and external-directory `make check`.
-- Isolated hostile mutations for each source range, blocked and accepted test
-  fixtures, guidance, and completed plan status.
+- The focused literal-boundary suite passed 47 selected cases, and the complete
+  Vitest suite passed all 92 cases.
+- ESLint, Prettier, and the production Vite build passed.
+- The repository-root and external-directory `make check` commands passed.
+- Seven isolated hostile mutations were rejected across each source range,
+  blocked and accepted fixtures, maintained guidance, and completed plan
+  status.
 - Exact diff, generated-artifact, untracked-file, dependency/workflow drift,
-  file-mode, credential-pattern, conflict-marker, and whitespace audits.
+  file-mode, credential-pattern, conflict-marker, and whitespace audits remain
+  part of final validation.
+- DNS rebinding remains outside this client-side syntactic boundary because
+  browser JavaScript cannot inspect DNS answers or the connected peer.
 
 ## Risks
 

@@ -39,7 +39,9 @@ function isBlockedIpv4Address(address) {
     (address >= 0x7f000000 && address <= 0x7fffffff) ||
     (address >= 0xa9fe0000 && address <= 0xa9feffff) ||
     (address >= 0xac100000 && address <= 0xac1fffff) ||
-    (address >= 0xc0a80000 && address <= 0xc0a8ffff)
+    (address >= 0xc0a80000 && address <= 0xc0a8ffff) ||
+    (address >= 0xe0000000 && address <= 0xefffffff) ||
+    (address >= 0xf0000000 && address <= 0xffffffff)
   );
 }
 
@@ -87,7 +89,8 @@ function isBlockedIpv6Address(hostname) {
   const firstHextet = Number.parseInt(address.split(':', 1)[0], 16);
   return (
     (firstHextet >= 0xfc00 && firstHextet <= 0xfdff) ||
-    (firstHextet >= 0xfe80 && firstHextet <= 0xfebf)
+    (firstHextet >= 0xfe80 && firstHextet <= 0xfebf) ||
+    (firstHextet >= 0xff00 && firstHextet <= 0xffff)
   );
 }
 

@@ -34,6 +34,7 @@ TOOL_PATCH_PLAN="$ROOT_DIR/docs/plans/2026-06-15-eslint-vitest-patch-upgrades.md
 THUMBNAIL_PRIVATE_LITERAL_PLAN="$ROOT_DIR/docs/plans/2026-06-15-photo-thumbnail-private-literal-boundary.md"
 THUMBNAIL_SHARED_ADDRESS_PLAN="$ROOT_DIR/docs/plans/2026-06-15-photo-thumbnail-shared-address-boundary.md"
 THUMBNAIL_DEFAULT_PORT_PLAN="$ROOT_DIR/docs/plans/2026-06-16-photo-thumbnail-default-port.md"
+THUMBNAIL_NON_UNICAST_PLAN="$ROOT_DIR/docs/plans/2026-06-16-photo-thumbnail-non-unicast-literals.md"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
   printf '%s\n' "CHANGES.md must document repository maintenance." >&2
@@ -517,11 +518,52 @@ for thumbnail_host_contract in \
   "address >= 0xa9fe0000 && address <= 0xa9feffff" \
   "address >= 0xac100000 && address <= 0xac1fffff" \
   "address >= 0xc0a80000 && address <= 0xc0a8ffff" \
+  "address >= 0xe0000000 && address <= 0xefffffff" \
+  "address >= 0xf0000000 && address <= 0xffffffff" \
   "ipv6Address.startsWith('::ffff:')" \
   "firstHextet >= 0xfc00 && firstHextet <= 0xfdff" \
-  "firstHextet >= 0xfe80 && firstHextet <= 0xfebf"; do
+  "firstHextet >= 0xfe80 && firstHextet <= 0xfebf" \
+  "firstHextet >= 0xff00 && firstHextet <= 0xffff"; do
   if ! grep -Fq "$thumbnail_host_contract" "$PHOTOS"; then
     printf '%s\n' "Missing thumbnail local-address contract: $thumbnail_host_contract" >&2
+    exit 1
+  fi
+done
+
+for thumbnail_non_unicast_fixture in \
+  "https://224.0.0.0/thumbnail.jpg" \
+  "https://239.255.255.255/thumbnail.jpg" \
+  "https://240.0.0.0/thumbnail.jpg" \
+  "https://255.255.255.255/thumbnail.jpg" \
+  "https://[ff00::]/thumbnail.jpg" \
+  "https://[ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff]/thumbnail.jpg" \
+  "https://223.255.255.255/thumbnail.jpg"; do
+  if ! grep -Fq "$thumbnail_non_unicast_fixture" "$APP_TEST"; then
+    printf '%s\n' "Missing thumbnail non-unicast fixture: $thumbnail_non_unicast_fixture" >&2
+    exit 1
+  fi
+done
+
+if ! grep -Fq "rejects a non-unicast thumbnail address literal before rendering" "$APP_TEST"; then
+  printf '%s\n' "Missing thumbnail non-unicast behavioral regression." >&2
+  exit 1
+fi
+
+for thumbnail_non_unicast_doc in "$ROOT_DIR/AGENTS.md" "$README" \
+  "$ROOT_DIR/SECURITY.md" "$ROOT_DIR/VISION.md" "$ROOT_DIR/CHANGES.md"; do
+  if ! grep -Fq "Backend-provided thumbnail URLs reject multicast and reserved future-use IP literals before rendering." "$thumbnail_non_unicast_doc"; then
+    printf '%s\n' "$thumbnail_non_unicast_doc must document the thumbnail non-unicast literal boundary." >&2
+    exit 1
+  fi
+done
+
+for thumbnail_non_unicast_plan_contract in \
+  'Status: Completed' \
+  'repository-root and external-directory `make check`' \
+  'hostile mutations' \
+  'DNS rebinding remains outside'; do
+  if ! grep -Fq "$thumbnail_non_unicast_plan_contract" "$THUMBNAIL_NON_UNICAST_PLAN"; then
+    printf '%s\n' "Thumbnail non-unicast plan must record completed verification: $thumbnail_non_unicast_plan_contract" >&2
     exit 1
   fi
 done

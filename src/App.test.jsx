@@ -784,6 +784,33 @@ test.each([
 );
 
 test.each([
+  'https://224.0.0.0/thumbnail.jpg',
+  'https://239.255.255.255/thumbnail.jpg',
+  'https://240.0.0.0/thumbnail.jpg',
+  'https://255.255.255.255/thumbnail.jpg',
+  'https://[ff00::]/thumbnail.jpg',
+  'https://[ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff]/thumbnail.jpg',
+])(
+  'rejects a non-unicast thumbnail address literal before rendering: %s',
+  async (thumbnailUrl) => {
+    mockFetchSuccess([
+      {
+        id: 1,
+        title: 'Non-unicast thumbnail',
+        thumbnailUrl,
+      },
+    ]);
+
+    render(<Photos />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Unable to load photos.',
+    );
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+  },
+);
+
+test.each([
   'https://8.8.8.8/thumbnail.jpg',
   'https://11.0.0.1/thumbnail.jpg',
   'https://100.63.255.255/thumbnail.jpg',
@@ -792,6 +819,7 @@ test.each([
   'https://172.15.255.255/thumbnail.jpg',
   'https://172.32.0.0/thumbnail.jpg',
   'https://192.169.0.1/thumbnail.jpg',
+  'https://223.255.255.255/thumbnail.jpg',
   'https://[2001:4860:4860::8888]/thumbnail.jpg',
   'https://[::ffff:8.8.8.8]/thumbnail.jpg',
   'https://images.localhost.example/thumbnail.jpg',
