@@ -6,6 +6,7 @@ export const PHOTO_REQUEST_TIMEOUT_MS = 10000;
 export const MAX_PHOTO_RESPONSE_BYTES = 2 * 1024 * 1024;
 
 const BLOCKED_SPECIAL_IPV6_PREFIXES = [
+  '64:ff9b:1::/48',
   '100::/64',
   '100:0:0:1::/64',
   '2001:2::/48',

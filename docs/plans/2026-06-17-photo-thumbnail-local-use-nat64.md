@@ -1,6 +1,6 @@
 # Reject Local-Use NAT64 Thumbnail Literals
 
-Status: Planned
+Status: Completed
 
 ## Problem
 
@@ -65,4 +65,18 @@ therefore cause the browser to request a non-global literal such as
 
 ## Completion Record
 
-Pending implementation and verification.
+- Before implementation, the two new `64:ff9b:1::/48` blocked fixtures
+  failed because the component rendered image elements for both literals.
+- After implementation, the focused blocked/accepted IPv6 matrix passed 25
+  cases and the complete Vitest suite passed all 118 tests.
+- ESLint, Prettier, and the production Vite build passed.
+- The production-only Yarn audit reported zero vulnerabilities across three
+  runtime dependencies.
+- Both repository and external-directory package gates passed the baseline checker, ESLint,
+  Prettier, all 118 Vitest cases, and the production build.
+- Eleven isolated hostile mutations were rejected across prefix presence,
+  `/48` narrowing and broadening, lower and upper blocked fixtures, well-known
+  and adjacent accepted controls, maintained guidance, plan status, and
+  verification evidence.
+- Final artifact, secret, dependency/workflow, conflict-marker, file-mode,
+  whitespace, and exact-diff audits are recorded before commit.

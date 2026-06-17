@@ -37,6 +37,7 @@ THUMBNAIL_DEFAULT_PORT_PLAN="$ROOT_DIR/docs/plans/2026-06-16-photo-thumbnail-def
 THUMBNAIL_NON_UNICAST_PLAN="$ROOT_DIR/docs/plans/2026-06-16-photo-thumbnail-non-unicast-literals.md"
 LATE_RESPONSE_PLAN="$ROOT_DIR/docs/plans/2026-06-16-photo-late-response-cancellation.md"
 THUMBNAIL_SPECIAL_IPV6_PLAN="$ROOT_DIR/docs/plans/2026-06-16-photo-thumbnail-special-ipv6-literals.md"
+THUMBNAIL_LOCAL_USE_NAT64_PLAN="$ROOT_DIR/docs/plans/2026-06-17-photo-thumbnail-local-use-nat64.md"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
   printf '%s\n' "CHANGES.md must document repository maintenance." >&2
@@ -572,6 +573,7 @@ done
 
 for thumbnail_special_ipv6_source_contract in \
   "const BLOCKED_SPECIAL_IPV6_PREFIXES = [" \
+  "'64:ff9b:1::/48'" \
   "'100::/64'" \
   "'100:0:0:1::/64'" \
   "'2001:2::/48'" \
@@ -585,6 +587,36 @@ for thumbnail_special_ipv6_source_contract in \
   "BLOCKED_SPECIAL_IPV6_PREFIXES.some((prefix) =>"; do
   if ! grep -Fq "$thumbnail_special_ipv6_source_contract" "$PHOTOS"; then
     printf '%s\n' "Missing thumbnail special-purpose IPv6 source contract: $thumbnail_special_ipv6_source_contract" >&2
+    exit 1
+  fi
+done
+
+for thumbnail_local_use_nat64_fixture in \
+  "https://[64:ff9b:1::1]/thumbnail.jpg" \
+  "https://[64:ff9b:1:ffff:ffff:ffff:ffff:ffff]/thumbnail.jpg" \
+  "https://[64:ff9b::808:808]/thumbnail.jpg" \
+  "https://[64:ff9b:2::1]/thumbnail.jpg"; do
+  if ! grep -Fq "$thumbnail_local_use_nat64_fixture" "$APP_TEST"; then
+    printf '%s\n' "Missing thumbnail local-use NAT64 fixture: $thumbnail_local_use_nat64_fixture" >&2
+    exit 1
+  fi
+done
+
+for thumbnail_local_use_nat64_doc in "$ROOT_DIR/AGENTS.md" "$README" \
+  "$ROOT_DIR/SECURITY.md" "$ROOT_DIR/VISION.md" "$ROOT_DIR/CHANGES.md"; do
+  if ! grep -Fq 'Backend-provided thumbnail URLs reject the non-global local-use NAT64 prefix `64:ff9b:1::/48` while preserving the separate well-known `64:ff9b::/96` prefix.' "$thumbnail_local_use_nat64_doc"; then
+    printf '%s\n' "$thumbnail_local_use_nat64_doc must document the local-use NAT64 literal boundary." >&2
+    exit 1
+  fi
+done
+
+for thumbnail_local_use_nat64_plan_contract in \
+  "Status: Completed" \
+  "64:ff9b:1::/48" \
+  "repository and external-directory package gates" \
+  "isolated hostile mutations"; do
+  if ! grep -Fq "$thumbnail_local_use_nat64_plan_contract" "$THUMBNAIL_LOCAL_USE_NAT64_PLAN"; then
+    printf '%s\n' "Thumbnail local-use NAT64 plan must record completed verification: $thumbnail_local_use_nat64_plan_contract" >&2
     exit 1
   fi
 done

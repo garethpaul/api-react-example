@@ -849,6 +849,8 @@ test.each([
 );
 
 test.each([
+  'https://[64:ff9b:1::1]/thumbnail.jpg',
+  'https://[64:ff9b:1:ffff:ffff:ffff:ffff:ffff]/thumbnail.jpg',
   'https://[100::1]/thumbnail.jpg',
   'https://[100::ffff:ffff:ffff:ffff]/thumbnail.jpg',
   'https://[100:0:0:1::1]/thumbnail.jpg',
@@ -884,6 +886,8 @@ test.each([
 );
 
 test.each([
+  'https://[64:ff9b::808:808]/thumbnail.jpg',
+  'https://[64:ff9b:2::1]/thumbnail.jpg',
   'https://[100:0:0:2::1]/thumbnail.jpg',
   'https://[2001:2:1::1]/thumbnail.jpg',
   'https://[2001:db7:ffff::1]/thumbnail.jpg',
