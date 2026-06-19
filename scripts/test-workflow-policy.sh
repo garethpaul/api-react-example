@@ -69,6 +69,42 @@ EOF
 track_fixture "$appended_authenticated_command"
 expect_reject "$appended_authenticated_command" "canonical Check workflow contract changed"
 
+bracket_github_token=$(new_fixture bracket-github-token)
+cat >"$bracket_github_token/.github/workflows/token.yml" <<'EOF'
+name: Bracket GitHub token
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  token:
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github['token'] }}
+    steps:
+      - run: gh api /user
+EOF
+track_fixture "$bracket_github_token"
+expect_reject "$bracket_github_token" "workflow policy forbids credential expressions"
+
+bracket_secret=$(new_fixture bracket-secret)
+cat >"$bracket_secret/.github/workflows/token.yml" <<'EOF'
+name: Bracket secret
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  token:
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ secrets['DEPLOY_TOKEN'] }}
+    steps:
+      - run: gh api /user
+EOF
+track_fixture "$bracket_secret"
+expect_reject "$bracket_secret" "workflow policy forbids credential expressions"
+
 job_env=$(new_fixture job-env)
 perl -0pi -e 's/    runs-on: ubuntu-24\.04/    runs-on: ubuntu-24.04\n    env:\n      GH_TOKEN: \$\{\{ github.token \}\}/' "$job_env/.github/workflows/check.yml"
 track_fixture "$job_env"
@@ -193,6 +229,26 @@ EOF
 track_fixture "$advanced_codeql"
 expect_reject "$advanced_codeql" "advanced CodeQL actions are forbidden"
 
+case_variant_codeql=$(new_fixture case-variant-codeql)
+cat >"$case_variant_codeql/.github/workflows/security.yml" <<'EOF'
+name: Case variant CodeQL
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  analyze:
+    permissions:
+      contents: read
+      security-events: write
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: GitHub/codeql-action/init@0123456789abcdef0123456789abcdef01234567
+      - uses: github/codeql-action/upload-sarif@0123456789abcdef0123456789abcdef01234567
+EOF
+track_fixture "$case_variant_codeql"
+expect_reject "$case_variant_codeql" "advanced CodeQL actions are forbidden"
+
 unpinned_action=$(new_fixture unpinned-action)
 cat >"$unpinned_action/.github/workflows/unpinned.yml" <<'EOF'
 name: Unpinned action
@@ -285,6 +341,69 @@ jobs:
 EOF
 track_fixture "$safe_local_workflow"
 expect_accept "$safe_local_workflow"
+
+local_reusable_sarif=$(new_fixture local-reusable-sarif)
+cat >"$local_reusable_sarif/.github/workflows/reusable.yml" <<'EOF'
+name: Reusable SARIF upload
+on:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  upload:
+    permissions:
+      contents: read
+      security-events: write
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: github/codeql-action/upload-sarif@0123456789abcdef0123456789abcdef01234567
+        with:
+          sarif_file: results.sarif
+EOF
+cat >"$local_reusable_sarif/.github/workflows/caller.yml" <<'EOF'
+name: Local reusable SARIF caller
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  call:
+    permissions:
+      contents: read
+      security-events: write
+    uses: ./.github/workflows/reusable.yml
+EOF
+track_fixture "$local_reusable_sarif"
+expect_accept "$local_reusable_sarif"
+
+local_reusable_sarif_missing_permission=$(new_fixture local-reusable-sarif-missing-permission)
+cat >"$local_reusable_sarif_missing_permission/.github/workflows/reusable.yml" <<'EOF'
+name: Reusable SARIF upload
+on:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  upload:
+    permissions:
+      contents: read
+      security-events: write
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: github/codeql-action/upload-sarif@0123456789abcdef0123456789abcdef01234567
+EOF
+cat >"$local_reusable_sarif_missing_permission/.github/workflows/caller.yml" <<'EOF'
+name: Under-permissioned reusable SARIF caller
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  call:
+    uses: ./.github/workflows/reusable.yml
+EOF
+track_fixture "$local_reusable_sarif_missing_permission"
+expect_reject "$local_reusable_sarif_missing_permission" "upload-sarif requires security-events: write"
 
 local_reusable_codeql=$(new_fixture local-reusable-codeql)
 cat >"$local_reusable_codeql/.github/workflows/reusable.yml" <<'EOF'
@@ -527,6 +646,23 @@ EOF
 track_fixture "$credential_persisting_checkout"
 expect_reject "$credential_persisting_checkout" "checkout must disable persisted credentials"
 
+case_variant_checkout=$(new_fixture case-variant-checkout)
+cat >"$case_variant_checkout/.github/workflows/checkout.yml" <<'EOF'
+name: Case variant checkout
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: Actions/Checkout@0123456789abcdef0123456789abcdef01234567
+      - run: git config --get http.https://github.com/.extraheader
+EOF
+track_fixture "$case_variant_checkout"
+expect_reject "$case_variant_checkout" "checkout must disable persisted credentials"
+
 safe_checkout=$(new_fixture safe-checkout)
 cat >"$safe_checkout/.github/workflows/checkout.yml" <<'EOF'
 name: Credential-free checkout
@@ -564,5 +700,61 @@ jobs:
 EOF
 track_fixture "$pull_request_target_upload"
 expect_reject "$pull_request_target_upload" "upload-sarif is forbidden for pull_request_target"
+
+scalar_pull_request_target_upload=$(new_fixture scalar-pull-request-target-upload)
+cat >"$scalar_pull_request_target_upload/.github/workflows/sarif.yml" <<'EOF'
+name: Scalar privileged pull request upload
+on: pull_request_target
+permissions:
+  contents: read
+jobs:
+  upload:
+    permissions:
+      contents: read
+      security-events: write
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: github/codeql-action/upload-sarif@0123456789abcdef0123456789abcdef01234567
+EOF
+track_fixture "$scalar_pull_request_target_upload"
+expect_reject "$scalar_pull_request_target_upload" "upload-sarif is forbidden for pull_request_target"
+
+sequence_pull_request_target_upload=$(new_fixture sequence-pull-request-target-upload)
+cat >"$sequence_pull_request_target_upload/.github/workflows/sarif.yml" <<'EOF'
+name: Sequence privileged pull request upload
+on: [pull_request_target]
+permissions:
+  contents: read
+jobs:
+  upload:
+    permissions:
+      contents: read
+      security-events: write
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: github/codeql-action/upload-sarif@0123456789abcdef0123456789abcdef01234567
+EOF
+track_fixture "$sequence_pull_request_target_upload"
+expect_reject "$sequence_pull_request_target_upload" "upload-sarif is forbidden for pull_request_target"
+
+mixed_privileged_sarif_job=$(new_fixture mixed-privileged-sarif-job)
+cat >"$mixed_privileged_sarif_job/.github/workflows/sarif.yml" <<'EOF'
+name: Mixed privileged SARIF job
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  upload:
+    permissions:
+      contents: read
+      security-events: write
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/setup-node@0123456789abcdef0123456789abcdef01234567
+      - uses: github/codeql-action/upload-sarif@0123456789abcdef0123456789abcdef01234567
+EOF
+track_fixture "$mixed_privileged_sarif_job"
+expect_reject "$mixed_privileged_sarif_job" "upload-sarif must be the only action in its privileged job"
 
 printf '%s\n' "workflow policy tests passed: $PASS_COUNT"

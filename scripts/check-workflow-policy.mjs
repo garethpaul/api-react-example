@@ -228,7 +228,11 @@ function walkValues(value, visitValue) {
 
 function rejectCredentialExpressions(value, path) {
   walkValues(value, (text) => {
-    if (/\$\{\{[^}]*\b(?:secrets\.|github\.token\b)/iu.test(text)) {
+    if (
+      /\$\{\{[^}]*\b(?:secrets\s*(?:\.|\[\s*['"])|github\s*(?:\.\s*token\b|\[\s*['"]token['"]\s*\]))/iu.test(
+        text,
+      )
+    ) {
       reject(
         `workflow policy forbids credential expressions in ${repositoryPath(path)}`,
       );
@@ -272,7 +276,6 @@ function enterReference(path, state) {
   if (state.active.has(absolutePath)) {
     reject(`local reference cycle detected: ${repositoryPath(absolutePath)}`);
   }
-  if (state.visited.has(absolutePath)) return false;
   state.count += 1;
   if (state.count > maxLocalReferences)
     reject(`local reference limit exceeded: ${maxLocalReferences}`);
@@ -283,7 +286,6 @@ function enterReference(path, state) {
 function leaveReference(path, state) {
   const absolutePath = resolve(path);
   state.active.delete(absolutePath);
-  state.visited.add(absolutePath);
 }
 
 function actionMetadata(reference) {
@@ -310,8 +312,10 @@ function classifyRemoteUse(reference, path, facts, step) {
     );
   }
   const action = reference.slice(0, reference.lastIndexOf('@'));
+  const normalizedAction = action.toLowerCase();
+  facts.actionUses += 1;
   if (
-    action === 'actions/checkout' &&
+    normalizedAction === 'actions/checkout' &&
     (step.with === null ||
       typeof step.with !== 'object' ||
       step.with['persist-credentials'] !== false)
@@ -320,8 +324,8 @@ function classifyRemoteUse(reference, path, facts, step) {
       `checkout must disable persisted credentials in ${repositoryPath(path)}`,
     );
   }
-  if (action.startsWith('github/codeql-action/')) {
-    if (action === 'github/codeql-action/upload-sarif') {
+  if (normalizedAction.startsWith('github/codeql-action/')) {
+    if (normalizedAction === 'github/codeql-action/upload-sarif') {
       facts.uploadSarif = true;
     } else {
       reject(
@@ -340,8 +344,16 @@ function scanSteps(steps, path, state, facts) {
       reject(`workflow steps must be mappings in ${repositoryPath(path)}`);
     }
     if (typeof step.uses !== 'string') continue;
-    if (step.uses.startsWith('./')) scanLocalAction(step.uses, state, facts);
-    else classifyRemoteUse(step.uses, path, facts, step);
+    if (step.uses.startsWith('./')) {
+      facts.actionUses += 1;
+      facts.nonUploadAction = true;
+      scanLocalAction(step.uses, state, facts);
+    } else {
+      const previousUploadSarif = facts.uploadSarif;
+      classifyRemoteUse(step.uses, path, facts, step);
+      if (facts.uploadSarif === previousUploadSarif)
+        facts.nonUploadAction = true;
+    }
   }
 }
 
@@ -367,7 +379,7 @@ function scanLocalAction(reference, state, facts) {
 
 function scanWorkflow(path, state, { localReference = false } = {}) {
   const workflowPath = requireTrackedFile(path);
-  if (localReference && !enterReference(workflowPath, state)) return;
+  if (localReference) enterReference(workflowPath, state);
   const value = documentValue(parseYaml(workflowPath));
   if (
     workflowPath === canonicalWorkflow &&
@@ -407,8 +419,18 @@ function scanWorkflow(path, state, { localReference = false } = {}) {
       job.permissions === undefined
         ? permissions
         : validatePermissionShape(job.permissions, workflowPath);
-    const jobFacts = { uploadSarif: false };
+    const jobFacts = {
+      actionUses: 0,
+      delegatedSarif: false,
+      nonUploadAction: false,
+      uploadSarif: false,
+    };
     if (typeof job.uses === 'string') {
+      if (job.steps !== undefined) {
+        reject(
+          `reusable workflow jobs must not define steps in ${repositoryPath(workflowPath)}`,
+        );
+      }
       if (!job.uses.startsWith('./')) {
         if (remoteReusablePattern.test(job.uses)) {
           reject(
@@ -429,7 +451,13 @@ function scanWorkflow(path, state, { localReference = false } = {}) {
           `local reusable workflows must be direct .github/workflows files: ${job.uses}`,
         );
       }
-      scanWorkflow(reusablePath, state, { localReference: true });
+      const reusableFacts = scanWorkflow(reusablePath, state, {
+        localReference: true,
+      });
+      if (reusableFacts.uploadSarif) {
+        jobFacts.delegatedSarif = true;
+        jobFacts.uploadSarif = true;
+      }
     }
     scanSteps(job.steps, workflowPath, state, jobFacts);
     if (jobFacts.uploadSarif && jobPermissions['security-events'] !== 'write') {
@@ -445,23 +473,35 @@ function scanWorkflow(path, state, { localReference = false } = {}) {
         `security-events: write is allowed only for upload-sarif in ${repositoryPath(workflowPath)}`,
       );
     }
+    if (
+      jobFacts.uploadSarif &&
+      !jobFacts.delegatedSarif &&
+      (jobFacts.actionUses !== 1 || jobFacts.nonUploadAction)
+    ) {
+      reject(
+        `upload-sarif must be the only action in its privileged job in ${repositoryPath(workflowPath)}`,
+      );
+    }
     facts.uploadSarif ||= jobFacts.uploadSarif;
   }
   if (
     facts.uploadSarif &&
-    value.on !== null &&
-    typeof value.on === 'object' &&
-    Object.hasOwn(value.on, 'pull_request_target')
+    ((typeof value.on === 'string' && value.on === 'pull_request_target') ||
+      (Array.isArray(value.on) && value.on.includes('pull_request_target')) ||
+      (value.on !== null &&
+        typeof value.on === 'object' &&
+        Object.hasOwn(value.on, 'pull_request_target')))
   ) {
     reject(
       `upload-sarif is forbidden for pull_request_target in ${repositoryPath(workflowPath)}`,
     );
   }
   if (localReference) leaveReference(workflowPath, state);
+  return facts;
 }
 
 function traversalState() {
-  return { active: new Set(), count: 0, visited: new Set() };
+  return { active: new Set(), count: 0 };
 }
 
 const files = workflowFiles(workflowsRoot);
