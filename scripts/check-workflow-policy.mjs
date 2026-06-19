@@ -28,7 +28,6 @@ const remoteReusablePattern =
   /^[^/@\s]+\/[^/@\s]+\/.github\/workflows\/[^@\s]+\.ya?ml@[^\s]+$/u;
 const allowedRemoteActions = new Set([
   'actions/checkout',
-  'actions/setup-node',
   'github/codeql-action/upload-sarif',
 ]);
 const supportedTags = new Set([
@@ -305,7 +304,13 @@ function actionMetadata(reference) {
   );
 }
 
-function classifyRemoteUse(reference, path, facts, step) {
+function classifyRemoteUse(
+  reference,
+  path,
+  facts,
+  step,
+  { canonical = false } = {},
+) {
   if (remoteReusablePattern.test(reference)) {
     reject(
       `remote reusable workflows are forbidden in ${repositoryPath(path)}`,
@@ -334,7 +339,10 @@ function classifyRemoteUse(reference, path, facts, step) {
       `advanced CodeQL actions are forbidden in ${repositoryPath(path)}: ${action}`,
     );
   }
-  if (!allowedRemoteActions.has(normalizedAction)) {
+  if (
+    !allowedRemoteActions.has(normalizedAction) &&
+    !(canonical && normalizedAction === 'actions/setup-node')
+  ) {
     reject(
       `remote action is not allowed in ${repositoryPath(path)}: ${action}`,
     );
@@ -370,7 +378,7 @@ function scanSteps(
   path,
   state,
   facts,
-  { allowRemoteActions = true } = {},
+  { allowRemoteActions = true, canonical = false } = {},
 ) {
   if (steps === undefined) return;
   if (!Array.isArray(steps))
@@ -414,7 +422,7 @@ function scanSteps(
         );
       }
       const previousUploadSarif = facts.uploadSarif;
-      classifyRemoteUse(step.uses, path, facts, step);
+      classifyRemoteUse(step.uses, path, facts, step, { canonical });
       if (facts.uploadSarif === previousUploadSarif)
         facts.nonUploadAction = true;
     }
@@ -552,7 +560,9 @@ function scanWorkflow(path, state, { localReference = false } = {}) {
         jobFacts.uploadSarif = true;
       }
     }
-    scanSteps(job.steps, workflowPath, state, jobFacts);
+    scanSteps(job.steps, workflowPath, state, jobFacts, {
+      canonical: workflowPath === canonicalWorkflow,
+    });
     if (workflowPath !== canonicalWorkflow && jobFacts.remoteAction) {
       const disallowedKeys = Object.keys(job).filter(
         (key) =>
