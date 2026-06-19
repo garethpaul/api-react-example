@@ -317,6 +317,14 @@ function classifyRemoteUse(reference, path, facts, step) {
   }
   const action = reference.slice(0, reference.lastIndexOf('@'));
   const normalizedAction = action.toLowerCase();
+  const disallowedStepKeys = Object.keys(step).filter(
+    (key) => !['name', 'uses', 'with'].includes(key),
+  );
+  if (disallowedStepKeys.length > 0) {
+    reject(
+      `remote action steps must not define env or conditions in ${repositoryPath(path)}`,
+    );
+  }
   if (
     normalizedAction.startsWith('github/codeql-action/') &&
     normalizedAction !== 'github/codeql-action/upload-sarif'
@@ -343,14 +351,6 @@ function classifyRemoteUse(reference, path, facts, step) {
   }
   if (normalizedAction.startsWith('github/codeql-action/')) {
     if (normalizedAction === 'github/codeql-action/upload-sarif') {
-      const disallowedKeys = Object.keys(step).filter(
-        (key) => !['name', 'uses', 'with'].includes(key),
-      );
-      if (disallowedKeys.length > 0) {
-        reject(
-          `upload-sarif steps must not define env or conditions in ${repositoryPath(path)}`,
-        );
-      }
       facts.uploadSarif = true;
     }
   }
@@ -416,6 +416,11 @@ function scanWorkflow(path, state, { localReference = false } = {}) {
   if (workflowPath !== canonicalWorkflow) {
     rejectCredentialExpressions(value, workflowPath);
   }
+  if (value.env !== undefined || value.defaults !== undefined) {
+    reject(
+      `workflows must not define env or defaults in ${repositoryPath(workflowPath)}`,
+    );
+  }
   const permissions = validatePermissionShape(value.permissions, workflowPath);
   if (permissions['security-events'] === 'write') {
     reject(
@@ -436,6 +441,15 @@ function scanWorkflow(path, state, { localReference = false } = {}) {
     if (job === null || Array.isArray(job) || typeof job !== 'object') {
       reject(
         `workflow jobs must contain mappings in ${repositoryPath(workflowPath)}`,
+      );
+    }
+    if (
+      job.env !== undefined ||
+      job.defaults !== undefined ||
+      job.if !== undefined
+    ) {
+      reject(
+        `jobs must not define env, defaults, or conditions in ${repositoryPath(workflowPath)}`,
       );
     }
     const jobPermissions =

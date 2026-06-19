@@ -775,6 +775,26 @@ EOF
 track_fixture "$safe_checkout"
 expect_accept "$safe_checkout"
 
+checkout_step_environment=$(new_fixture checkout-step-environment)
+cat >"$checkout_step_environment/.github/workflows/checkout.yml" <<'EOF'
+name: Environment-injected checkout
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@0123456789abcdef0123456789abcdef01234567
+        env:
+          NODE_OPTIONS: --import=data:text/javascript,console.log(process.env.INPUT_TOKEN)
+        with:
+          persist-credentials: false
+EOF
+track_fixture "$checkout_step_environment"
+expect_reject "$checkout_step_environment" "remote action steps must not define env or conditions"
+
 pull_request_target_upload=$(new_fixture pull-request-target-upload)
 cat >"$pull_request_target_upload/.github/workflows/sarif.yml" <<'EOF'
 name: Privileged pull request upload
@@ -869,7 +889,64 @@ jobs:
       - uses: github/codeql-action/upload-sarif@0123456789abcdef0123456789abcdef01234567
 EOF
 track_fixture "$sarif_job_environment"
-expect_reject "$sarif_job_environment" "privileged upload-sarif jobs must not define env, defaults, or conditions"
+expect_reject "$sarif_job_environment" "jobs must not define env, defaults, or conditions"
+
+workflow_sarif_environment=$(new_fixture workflow-sarif-environment)
+cat >"$workflow_sarif_environment/.github/workflows/sarif.yml" <<'EOF'
+name: Workflow environment-injected SARIF
+on:
+  workflow_dispatch:
+env:
+  NODE_OPTIONS: --import=data:text/javascript,console.log(process.env.INPUT_TOKEN)
+permissions:
+  contents: read
+jobs:
+  upload:
+    permissions:
+      contents: read
+      security-events: write
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: github/codeql-action/upload-sarif@0123456789abcdef0123456789abcdef01234567
+EOF
+track_fixture "$workflow_sarif_environment"
+expect_reject "$workflow_sarif_environment" "workflows must not define env or defaults"
+
+workflow_defaults=$(new_fixture workflow-defaults)
+cat >"$workflow_defaults/.github/workflows/defaults.yml" <<'EOF'
+name: Workflow defaults
+on:
+  workflow_dispatch:
+defaults:
+  run:
+    shell: bash -e {0}
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo check
+EOF
+track_fixture "$workflow_defaults"
+expect_reject "$workflow_defaults" "workflows must not define env or defaults"
+
+unrelated_job_condition=$(new_fixture unrelated-job-condition)
+cat >"$unrelated_job_condition/.github/workflows/condition.yml" <<'EOF'
+name: Conditional unrelated job
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo check
+EOF
+track_fixture "$unrelated_job_condition"
+expect_reject "$unrelated_job_condition" "jobs must not define env, defaults, or conditions"
 
 sarif_step_environment=$(new_fixture sarif-step-environment)
 cat >"$sarif_step_environment/.github/workflows/sarif.yml" <<'EOF'
@@ -890,7 +967,7 @@ jobs:
           NODE_OPTIONS: --import=data:text/javascript,console.log(process.env)
 EOF
 track_fixture "$sarif_step_environment"
-expect_reject "$sarif_step_environment" "upload-sarif steps must not define env or conditions"
+expect_reject "$sarif_step_environment" "remote action steps must not define env or conditions"
 
 tag_directive=$(new_fixture tag-directive)
 cat >"$tag_directive/.github/workflows/tag-directive.yml" <<'EOF'
