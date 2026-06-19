@@ -886,6 +886,33 @@ test.each([
 );
 
 test.each([
+  'https://[64:ff9b::a00:1]/thumbnail.jpg',
+  'https://[64:ff9b::6440:1]/thumbnail.jpg',
+  'https://[64:ff9b::7f00:1]/thumbnail.jpg',
+  'https://[64:ff9b::c0a8:101]/thumbnail.jpg',
+  'https://[64:ff9b::e000:1]/thumbnail.jpg',
+  'https://[64:ff9b::f000:1]/thumbnail.jpg',
+])(
+  'rejects a well-known NAT64 thumbnail literal with blocked embedded IPv4: %s',
+  async (thumbnailUrl) => {
+    mockFetchSuccess([
+      {
+        id: 1,
+        title: 'NAT64 embedded blocked IPv4 thumbnail',
+        thumbnailUrl,
+      },
+    ]);
+
+    render(<Photos />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Unable to load photos.',
+    );
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+  },
+);
+
+test.each([
   'https://[64:ff9b::808:808]/thumbnail.jpg',
   'https://[64:ff9b:2::1]/thumbnail.jpg',
   'https://[100:0:0:2::1]/thumbnail.jpg',

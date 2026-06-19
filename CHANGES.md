@@ -4,7 +4,7 @@
 - Backend-provided thumbnail URLs cannot explicitly target IPv4 shared address space before rendering.
 - Backend-provided thumbnail URLs reject multicast and reserved future-use IP literals before rendering.
 - Backend-provided thumbnail URLs reject selected non-global and deprecated special-purpose IPv6 literals before rendering.
-- Backend-provided thumbnail URLs reject the non-global local-use NAT64 prefix `64:ff9b:1::/48` while preserving the separate well-known `64:ff9b::/96` prefix.
+- Backend-provided thumbnail URLs reject the non-global local-use NAT64 prefix `64:ff9b:1::/48` and blocked IPv4 addresses embedded in the well-known `64:ff9b::/96` prefix while preserving well-known NAT64 literals that embed public IPv4 addresses.
 - Backend-provided thumbnail URLs use only the default HTTPS port before rendering; browser code cannot inspect DNS answers or the connected peer.
 - Expired photo requests cancel late fetch responses before response metadata or stream access.
 

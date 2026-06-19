@@ -38,6 +38,7 @@ THUMBNAIL_NON_UNICAST_PLAN="$ROOT_DIR/docs/plans/2026-06-16-photo-thumbnail-non-
 LATE_RESPONSE_PLAN="$ROOT_DIR/docs/plans/2026-06-16-photo-late-response-cancellation.md"
 THUMBNAIL_SPECIAL_IPV6_PLAN="$ROOT_DIR/docs/plans/2026-06-16-photo-thumbnail-special-ipv6-literals.md"
 THUMBNAIL_LOCAL_USE_NAT64_PLAN="$ROOT_DIR/docs/plans/2026-06-17-photo-thumbnail-local-use-nat64.md"
+THUMBNAIL_NAT64_EMBEDDED_IPV4_PLAN="$ROOT_DIR/docs/plans/2026-06-19-photo-thumbnail-nat64-embedded-ipv4.md"
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
   printf '%s\n' "CHANGES.md must document repository maintenance." >&2
@@ -581,6 +582,11 @@ for thumbnail_special_ipv6_source_contract in \
   "'3fff::/20'" \
   "'5f00::/16'" \
   "'fec0::/10'" \
+  "function wellKnownNat64MappedAddress(hextets)" \
+  "hextets[0] === 0x0064" \
+  "hextets[1] === 0xff9b" \
+  "hextets.slice(2, 6).every((hextet) => hextet === 0)" \
+  "isBlockedIpv4Address(nat64MappedAddress)" \
   "function parseIpv6Hextets(address)" \
   "function matchesIpv6Prefix(address, prefix)" \
   "if (hextets === null)" \
@@ -604,8 +610,42 @@ done
 
 for thumbnail_local_use_nat64_doc in "$ROOT_DIR/AGENTS.md" "$README" \
   "$ROOT_DIR/SECURITY.md" "$ROOT_DIR/VISION.md" "$ROOT_DIR/CHANGES.md"; do
-  if ! grep -Fq 'Backend-provided thumbnail URLs reject the non-global local-use NAT64 prefix `64:ff9b:1::/48` while preserving the separate well-known `64:ff9b::/96` prefix.' "$thumbnail_local_use_nat64_doc"; then
+  if ! grep -Fq 'Backend-provided thumbnail URLs reject the non-global local-use NAT64 prefix `64:ff9b:1::/48` and blocked IPv4 addresses embedded in the well-known `64:ff9b::/96` prefix while preserving well-known NAT64 literals that embed public IPv4 addresses.' "$thumbnail_local_use_nat64_doc"; then
     printf '%s\n' "$thumbnail_local_use_nat64_doc must document the local-use NAT64 literal boundary." >&2
+    exit 1
+  fi
+done
+
+for thumbnail_nat64_embedded_ipv4_fixture in \
+  "https://[64:ff9b::a00:1]/thumbnail.jpg" \
+  "https://[64:ff9b::6440:1]/thumbnail.jpg" \
+  "https://[64:ff9b::7f00:1]/thumbnail.jpg" \
+  "https://[64:ff9b::c0a8:101]/thumbnail.jpg" \
+  "https://[64:ff9b::e000:1]/thumbnail.jpg" \
+  "https://[64:ff9b::f000:1]/thumbnail.jpg" \
+  "https://[64:ff9b::808:808]/thumbnail.jpg"; do
+  if ! grep -Fq "$thumbnail_nat64_embedded_ipv4_fixture" "$APP_TEST"; then
+    printf '%s\n' "Missing thumbnail NAT64 embedded IPv4 fixture: $thumbnail_nat64_embedded_ipv4_fixture" >&2
+    exit 1
+  fi
+done
+
+for thumbnail_nat64_embedded_ipv4_test_contract in \
+  "rejects a well-known NAT64 thumbnail literal with blocked embedded IPv4" \
+  "preserves an IPv6 literal outside the selected special-purpose prefixes"; do
+  if ! grep -Fq "$thumbnail_nat64_embedded_ipv4_test_contract" "$APP_TEST"; then
+    printf '%s\n' "Missing thumbnail NAT64 embedded IPv4 regression: $thumbnail_nat64_embedded_ipv4_test_contract" >&2
+    exit 1
+  fi
+done
+
+for thumbnail_nat64_embedded_ipv4_plan_contract in \
+  "Status: Completed" \
+  "failed because the component rendered images" \
+  "focused well-known NAT64 matrix passed 6 blocked" \
+  "Do not block \`64:ff9b::/96\` wholesale"; do
+  if ! grep -Fq "$thumbnail_nat64_embedded_ipv4_plan_contract" "$THUMBNAIL_NAT64_EMBEDDED_IPV4_PLAN"; then
+    printf '%s\n' "Thumbnail NAT64 embedded IPv4 plan must record completed verification: $thumbnail_nat64_embedded_ipv4_plan_contract" >&2
     exit 1
   fi
 done

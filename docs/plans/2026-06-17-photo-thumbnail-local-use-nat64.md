@@ -50,7 +50,9 @@ therefore cause the browser to request a non-global literal such as
 
 ## Scope Boundaries
 
-- Do not block the separate `64:ff9b::/96` well-known prefix.
+- Do not block the separate `64:ff9b::/96` well-known prefix wholesale; public
+  embedded IPv4 addresses remain accepted while blocked embedded IPv4 ranges
+  are handled by the follow-up NAT64 embedded IPv4 maintenance plan.
 - Do not add DNS resolution, connected-peer inspection, proxying, or network
   dependencies; browser application JavaScript cannot bind image requests to
   prevalidated DNS answers.

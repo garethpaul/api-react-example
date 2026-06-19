@@ -88,6 +88,19 @@ function ipv4MappedAddress(ipv6Address) {
   return high * 0x10000 + low;
 }
 
+function wellKnownNat64MappedAddress(hextets) {
+  const isWellKnownNat64 =
+    hextets[0] === 0x0064 &&
+    hextets[1] === 0xff9b &&
+    hextets.slice(2, 6).every((hextet) => hextet === 0);
+
+  if (!isWellKnownNat64) {
+    return null;
+  }
+
+  return hextets[6] * 0x10000 + hextets[7];
+}
+
 function parseIpv6Hextets(address) {
   const compressedParts = address.split('::');
   if (compressedParts.length > 2) {
@@ -167,6 +180,12 @@ function isBlockedIpv6Address(hostname) {
   if (hextets === null) {
     return true;
   }
+
+  const nat64MappedAddress = wellKnownNat64MappedAddress(hextets);
+  if (nat64MappedAddress !== null && isBlockedIpv4Address(nat64MappedAddress)) {
+    return true;
+  }
+
   if (
     BLOCKED_SPECIAL_IPV6_PREFIXES.some((prefix) =>
       matchesIpv6Prefix(hextets, prefix),
