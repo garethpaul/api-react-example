@@ -26,6 +26,11 @@ const ambiguousWhitespace =
 const remoteActionPattern = /^[^/@\s]+\/[^/@\s]+(?:\/[^@\s]+)?@[0-9a-f]{40}$/u;
 const remoteReusablePattern =
   /^[^/@\s]+\/[^/@\s]+\/.github\/workflows\/[^@\s]+\.ya?ml@[^\s]+$/u;
+const allowedRemoteActions = new Set([
+  'actions/checkout',
+  'actions/setup-node',
+  'github/codeql-action/upload-sarif',
+]);
 const supportedTags = new Set([
   'tag:yaml.org,2002:bool',
   'tag:yaml.org,2002:float',
@@ -164,7 +169,10 @@ function parseYaml(path) {
       `invalid workflow YAML in ${repositoryPath(path)}: ${document.errors[0].message}`,
     );
   }
-  if (document.directives.yaml.explicit) {
+  if (
+    document.directives.yaml.explicit ||
+    Object.keys(document.directives.tags).some((handle) => handle !== '!!')
+  ) {
     reject(`YAML directives are forbidden in ${repositoryPath(path)}`);
   }
   let nodeCount = 0;
@@ -309,6 +317,19 @@ function classifyRemoteUse(reference, path, facts, step) {
   }
   const action = reference.slice(0, reference.lastIndexOf('@'));
   const normalizedAction = action.toLowerCase();
+  if (
+    normalizedAction.startsWith('github/codeql-action/') &&
+    normalizedAction !== 'github/codeql-action/upload-sarif'
+  ) {
+    reject(
+      `advanced CodeQL actions are forbidden in ${repositoryPath(path)}: ${action}`,
+    );
+  }
+  if (!allowedRemoteActions.has(normalizedAction)) {
+    reject(
+      `remote action is not allowed in ${repositoryPath(path)}: ${action}`,
+    );
+  }
   facts.actionUses += 1;
   if (
     normalizedAction === 'actions/checkout' &&
@@ -322,11 +343,15 @@ function classifyRemoteUse(reference, path, facts, step) {
   }
   if (normalizedAction.startsWith('github/codeql-action/')) {
     if (normalizedAction === 'github/codeql-action/upload-sarif') {
-      facts.uploadSarif = true;
-    } else {
-      reject(
-        `advanced CodeQL actions are forbidden in ${repositoryPath(path)}: ${action}`,
+      const disallowedKeys = Object.keys(step).filter(
+        (key) => !['name', 'uses', 'with'].includes(key),
       );
+      if (disallowedKeys.length > 0) {
+        reject(
+          `upload-sarif steps must not define env or conditions in ${repositoryPath(path)}`,
+        );
+      }
+      facts.uploadSarif = true;
     }
   }
 }
@@ -453,6 +478,15 @@ function scanWorkflow(path, state, { localReference = false } = {}) {
         localReference: true,
       });
       if (reusableFacts.uploadSarif) {
+        const disallowedKeys = Object.keys(job).filter(
+          (key) =>
+            !['name', 'needs', 'permissions', 'uses', 'with'].includes(key),
+        );
+        if (disallowedKeys.length > 0) {
+          reject(
+            `privileged reusable upload-sarif jobs contain unsupported keys in ${repositoryPath(workflowPath)}`,
+          );
+        }
         jobFacts.delegatedSarif = true;
         jobFacts.uploadSarif = true;
       }
@@ -462,6 +496,23 @@ function scanWorkflow(path, state, { localReference = false } = {}) {
       reject(
         `upload-sarif requires security-events: write in ${repositoryPath(workflowPath)}`,
       );
+    }
+    if (jobFacts.uploadSarif && !jobFacts.delegatedSarif) {
+      const disallowedKeys = Object.keys(job).filter(
+        (key) =>
+          ![
+            'name',
+            'permissions',
+            'runs-on',
+            'steps',
+            'timeout-minutes',
+          ].includes(key),
+      );
+      if (disallowedKeys.length > 0) {
+        reject(
+          `privileged upload-sarif jobs must not define env, defaults, or conditions in ${repositoryPath(workflowPath)}`,
+        );
+      }
     }
     if (
       !jobFacts.uploadSarif &&

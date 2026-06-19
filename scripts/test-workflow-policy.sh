@@ -721,6 +721,41 @@ EOF
 track_fixture "$case_variant_checkout"
 expect_reject "$case_variant_checkout" "checkout must disable persisted credentials"
 
+checkout_dot_subpath=$(new_fixture checkout-dot-subpath)
+cat >"$checkout_dot_subpath/.github/workflows/checkout.yml" <<'EOF'
+name: Checkout dot subpath
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout/.@0123456789abcdef0123456789abcdef01234567
+      - run: git config --get http.https://github.com/.extraheader
+EOF
+track_fixture "$checkout_dot_subpath"
+expect_reject "$checkout_dot_subpath" "remote action is not allowed"
+
+github_script=$(new_fixture github-script)
+cat >"$github_script/.github/workflows/script.yml" <<'EOF'
+name: Token-bearing script action
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  script:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/github-script@0123456789abcdef0123456789abcdef01234567
+        with:
+          script: console.log(process.env['INPUT_GITHUB-TOKEN'])
+EOF
+track_fixture "$github_script"
+expect_reject "$github_script" "remote action is not allowed"
+
 safe_checkout=$(new_fixture safe-checkout)
 cat >"$safe_checkout/.github/workflows/checkout.yml" <<'EOF'
 name: Credential-free checkout
@@ -814,5 +849,61 @@ jobs:
 EOF
 track_fixture "$mixed_privileged_sarif_job"
 expect_reject "$mixed_privileged_sarif_job" "upload-sarif must be the only action in its privileged job"
+
+sarif_job_environment=$(new_fixture sarif-job-environment)
+cat >"$sarif_job_environment/.github/workflows/sarif.yml" <<'EOF'
+name: Environment-injected SARIF job
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  upload:
+    permissions:
+      contents: read
+      security-events: write
+    runs-on: ubuntu-24.04
+    env:
+      NODE_OPTIONS: --import=data:text/javascript,console.log(process.env)
+    steps:
+      - uses: github/codeql-action/upload-sarif@0123456789abcdef0123456789abcdef01234567
+EOF
+track_fixture "$sarif_job_environment"
+expect_reject "$sarif_job_environment" "privileged upload-sarif jobs must not define env, defaults, or conditions"
+
+sarif_step_environment=$(new_fixture sarif-step-environment)
+cat >"$sarif_step_environment/.github/workflows/sarif.yml" <<'EOF'
+name: Environment-injected SARIF action
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  upload:
+    permissions:
+      contents: read
+      security-events: write
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: github/codeql-action/upload-sarif@0123456789abcdef0123456789abcdef01234567
+        env:
+          NODE_OPTIONS: --import=data:text/javascript,console.log(process.env)
+EOF
+track_fixture "$sarif_step_environment"
+expect_reject "$sarif_step_environment" "upload-sarif steps must not define env or conditions"
+
+tag_directive=$(new_fixture tag-directive)
+cat >"$tag_directive/.github/workflows/tag-directive.yml" <<'EOF'
+%TAG !e! tag:example.com,2026:
+---
+name: Tag directive
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs: {}
+EOF
+track_fixture "$tag_directive"
+expect_reject "$tag_directive" "YAML directives are forbidden"
 
 printf '%s\n' "workflow policy tests passed: $PASS_COUNT"
