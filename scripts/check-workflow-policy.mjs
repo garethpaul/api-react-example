@@ -547,6 +547,28 @@ function scanWorkflow(path, state, { localReference = false } = {}) {
       }
     }
     scanSteps(job.steps, workflowPath, state, jobFacts);
+    if (workflowPath !== canonicalWorkflow && jobFacts.remoteAction) {
+      const disallowedKeys = Object.keys(job).filter(
+        (key) =>
+          ![
+            'name',
+            'permissions',
+            'runs-on',
+            'steps',
+            'timeout-minutes',
+          ].includes(key),
+      );
+      if (disallowedKeys.length > 0) {
+        reject(
+          `remote-action jobs contain unsupported keys in ${repositoryPath(workflowPath)}`,
+        );
+      }
+      if (job['runs-on'] !== 'ubuntu-24.04') {
+        reject(
+          `remote-action jobs must run on ubuntu-24.04 in ${repositoryPath(workflowPath)}`,
+        );
+      }
+    }
     if (
       workflowPath !== canonicalWorkflow &&
       jobFacts.remoteAction &&

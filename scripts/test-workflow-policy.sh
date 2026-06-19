@@ -774,6 +774,88 @@ EOF
 track_fixture "$safe_checkout"
 expect_accept "$safe_checkout"
 
+checkout_container_environment=$(new_fixture checkout-container-environment)
+cat >"$checkout_container_environment/.github/workflows/checkout.yml" <<'EOF'
+name: Container-injected checkout
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    container:
+      image: node:24
+      env:
+        NODE_OPTIONS: --import=data:text/javascript,console.log(process.env.INPUT_TOKEN)
+    steps:
+      - uses: actions/checkout@0123456789abcdef0123456789abcdef01234567
+        with:
+          persist-credentials: false
+EOF
+track_fixture "$checkout_container_environment"
+expect_reject "$checkout_container_environment" "remote-action jobs contain unsupported keys"
+
+checkout_service=$(new_fixture checkout-service)
+cat >"$checkout_service/.github/workflows/checkout.yml" <<'EOF'
+name: Service-injected checkout
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    services:
+      proxy:
+        image: attacker/proxy:latest
+    steps:
+      - uses: actions/checkout@0123456789abcdef0123456789abcdef01234567
+        with:
+          persist-credentials: false
+EOF
+track_fixture "$checkout_service"
+expect_reject "$checkout_service" "remote-action jobs contain unsupported keys"
+
+checkout_self_hosted=$(new_fixture checkout-self-hosted)
+cat >"$checkout_self_hosted/.github/workflows/checkout.yml" <<'EOF'
+name: Self-hosted checkout
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@0123456789abcdef0123456789abcdef01234567
+        with:
+          persist-credentials: false
+EOF
+track_fixture "$checkout_self_hosted"
+expect_reject "$checkout_self_hosted" "remote-action jobs must run on ubuntu-24.04"
+
+checkout_strategy=$(new_fixture checkout-strategy)
+cat >"$checkout_strategy/.github/workflows/checkout.yml" <<'EOF'
+name: Matrix checkout
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        image: [node:24]
+    steps:
+      - uses: actions/checkout@0123456789abcdef0123456789abcdef01234567
+        with:
+          persist-credentials: false
+EOF
+track_fixture "$checkout_strategy"
+expect_reject "$checkout_strategy" "remote-action jobs contain unsupported keys"
+
 run_after_checkout=$(new_fixture run-after-checkout)
 cat >"$run_after_checkout/.github/workflows/checkout.yml" <<'EOF'
 name: Run after checkout
