@@ -72,6 +72,7 @@ const canonicalContract = {
           with: {
             'node-version': '${{ matrix.node-version }}',
             cache: 'yarn',
+            token: '',
           },
         },
         {
@@ -383,6 +384,11 @@ function scanSteps(
       continue;
     }
     if (step.uses.startsWith('./')) {
+      if (facts.priorExecutableStep) {
+        reject(
+          `local actions must not follow executable steps in ${repositoryPath(path)}`,
+        );
+      }
       const disallowedKeys = Object.keys(step).filter(
         (key) => !['name', 'uses', 'with'].includes(key),
       );

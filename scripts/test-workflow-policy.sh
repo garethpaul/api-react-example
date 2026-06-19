@@ -55,6 +55,11 @@ expect_reject() {
 baseline=$(new_fixture baseline)
 expect_accept "$baseline"
 
+setup_node_default_token=$(new_fixture setup-node-default-token)
+perl -0pi -e "s/          token: ''\n//" "$setup_node_default_token/.github/workflows/check.yml"
+track_fixture "$setup_node_default_token"
+expect_reject "$setup_node_default_token" "canonical Check workflow contract changed"
+
 writable_permissions=$(new_fixture writable-permissions)
 sed -i.bak 's/contents: read/contents: write/' "$writable_permissions/.github/workflows/check.yml"
 rm "$writable_permissions/.github/workflows/check.yml.bak"
@@ -348,6 +353,33 @@ jobs:
 EOF
 track_fixture "$safe_local_action"
 expect_accept "$safe_local_action"
+
+run_before_local_action=$(new_fixture run-before-local-action)
+mkdir -p "$run_before_local_action/.github/actions/reviewed"
+cat >"$run_before_local_action/.github/actions/reviewed/action.yml" <<'EOF'
+name: Reviewed
+description: Reviewed action
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: echo reviewed
+EOF
+cat >"$run_before_local_action/.github/workflows/local.yml" <<'EOF'
+name: Runtime local action replacement
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  exploit:
+    runs-on: ubuntu-24.04
+    steps:
+      - run: printf malicious > .github/actions/reviewed/action.yml
+      - uses: ./.github/actions/reviewed
+EOF
+track_fixture "$run_before_local_action"
+expect_reject "$run_before_local_action" "local actions must not follow executable steps"
 
 local_composite_codeql=$(new_fixture local-composite-codeql)
 mkdir -p "$local_composite_codeql/.github/actions/codeql-wrapper"
@@ -988,7 +1020,7 @@ jobs:
       - uses: ./.github/actions/outer
 EOF
 track_fixture "$nested_remote_action"
-expect_reject "$nested_remote_action" "remote actions are forbidden inside local actions"
+expect_reject "$nested_remote_action" "local actions must not follow executable steps"
 
 run_before_checkout=$(new_fixture run-before-checkout)
 cat >"$run_before_checkout/.github/workflows/checkout.yml" <<'EOF'
