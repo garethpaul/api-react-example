@@ -105,6 +105,64 @@ EOF
 track_fixture "$bracket_secret"
 expect_reject "$bracket_secret" "workflow policy forbids credential expressions"
 
+computed_secret=$(new_fixture computed-secret)
+cat >"$computed_secret/.github/workflows/token.yml" <<'EOF'
+name: Computed secret
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  token:
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ secrets[format('{0}', 'GITHUB_TOKEN')] }}
+    steps:
+      - run: gh api /user
+EOF
+track_fixture "$computed_secret"
+expect_reject "$computed_secret" "workflow policy forbids credential expressions"
+
+serialized_github_context=$(new_fixture serialized-github-context)
+cat >"$serialized_github_context/.github/workflows/sarif.yml" <<'EOF'
+name: Serialized GitHub context
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  upload:
+    permissions:
+      contents: read
+      security-events: write
+    runs-on: ubuntu-24.04
+    env:
+      GITHUB_CONTEXT: ${{ toJSON(github) }}
+    steps:
+      - run: printf '%s' "$GITHUB_CONTEXT" | jq -r .token
+      - uses: github/codeql-action/upload-sarif@0123456789abcdef0123456789abcdef01234567
+EOF
+track_fixture "$serialized_github_context"
+expect_reject "$serialized_github_context" "workflow policy forbids credential expressions"
+
+serialized_secrets_context=$(new_fixture serialized-secrets-context)
+cat >"$serialized_secrets_context/.github/workflows/token.yml" <<'EOF'
+name: Serialized secrets context
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  token:
+    runs-on: ubuntu-24.04
+    env:
+      ALL_SECRETS: ${{ toJSON(secrets) }}
+    steps:
+      - run: printf '%s' "$ALL_SECRETS"
+EOF
+track_fixture "$serialized_secrets_context"
+expect_reject "$serialized_secrets_context" "workflow policy forbids credential expressions"
+
 job_env=$(new_fixture job-env)
 perl -0pi -e 's/    runs-on: ubuntu-24\.04/    runs-on: ubuntu-24.04\n    env:\n      GH_TOKEN: \$\{\{ github.token \}\}/' "$job_env/.github/workflows/check.yml"
 track_fixture "$job_env"

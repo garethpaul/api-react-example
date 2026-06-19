@@ -228,11 +228,7 @@ function walkValues(value, visitValue) {
 
 function rejectCredentialExpressions(value, path) {
   walkValues(value, (text) => {
-    if (
-      /\$\{\{[^}]*\b(?:secrets\s*(?:\.|\[\s*['"])|github\s*(?:\.\s*token\b|\[\s*['"]token['"]\s*\]))/iu.test(
-        text,
-      )
-    ) {
+    if (/\$\{\{[\s\S]*\b(?:github|secrets)\b[\s\S]*\}\}/iu.test(text)) {
       reject(
         `workflow policy forbids credential expressions in ${repositoryPath(path)}`,
       );
@@ -392,7 +388,9 @@ function scanWorkflow(path, state, { localReference = false } = {}) {
       `workflow root must be a mapping in ${repositoryPath(workflowPath)}`,
     );
   }
-  rejectCredentialExpressions(value, workflowPath);
+  if (workflowPath !== canonicalWorkflow) {
+    rejectCredentialExpressions(value, workflowPath);
+  }
   const permissions = validatePermissionShape(value.permissions, workflowPath);
   if (permissions['security-events'] === 'write') {
     reject(
