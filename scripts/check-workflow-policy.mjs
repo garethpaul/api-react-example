@@ -364,12 +364,22 @@ function scanSteps(steps, path, state, facts) {
     if (step === null || Array.isArray(step) || typeof step !== 'object') {
       reject(`workflow steps must be mappings in ${repositoryPath(path)}`);
     }
-    if (typeof step.uses !== 'string') continue;
+    if (typeof step.uses !== 'string') {
+      if (step.run !== undefined) facts.priorExecutableStep = true;
+      continue;
+    }
     if (step.uses.startsWith('./')) {
       facts.actionUses += 1;
       facts.nonUploadAction = true;
+      facts.priorExecutableStep = false;
       scanLocalAction(step.uses, state, facts);
+      facts.priorExecutableStep = true;
     } else {
+      if (facts.priorExecutableStep) {
+        reject(
+          `remote actions must not follow executable steps in ${repositoryPath(path)}`,
+        );
+      }
       const previousUploadSarif = facts.uploadSarif;
       classifyRemoteUse(step.uses, path, facts, step);
       if (facts.uploadSarif === previousUploadSarif)
@@ -460,6 +470,7 @@ function scanWorkflow(path, state, { localReference = false } = {}) {
       actionUses: 0,
       delegatedSarif: false,
       nonUploadAction: false,
+      priorExecutableStep: false,
       uploadSarif: false,
     };
     if (typeof job.uses === 'string') {
@@ -543,6 +554,15 @@ function scanWorkflow(path, state, { localReference = false } = {}) {
     ) {
       reject(
         `upload-sarif must be the only action in its privileged job in ${repositoryPath(workflowPath)}`,
+      );
+    }
+    if (
+      jobFacts.uploadSarif &&
+      !jobFacts.delegatedSarif &&
+      job.steps.length !== 1
+    ) {
+      reject(
+        `privileged upload-sarif jobs must contain exactly one step in ${repositoryPath(workflowPath)}`,
       );
     }
     facts.uploadSarif ||= jobFacts.uploadSarif;

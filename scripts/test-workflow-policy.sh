@@ -775,6 +775,54 @@ EOF
 track_fixture "$safe_checkout"
 expect_accept "$safe_checkout"
 
+run_before_checkout=$(new_fixture run-before-checkout)
+cat >"$run_before_checkout/.github/workflows/checkout.yml" <<'EOF'
+name: Run before checkout
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo "$RUNNER_TEMP/fake-bin" >> "$GITHUB_PATH"
+      - uses: actions/checkout@0123456789abcdef0123456789abcdef01234567
+        with:
+          persist-credentials: false
+EOF
+track_fixture "$run_before_checkout"
+expect_reject "$run_before_checkout" "remote actions must not follow executable steps"
+
+local_action_before_checkout=$(new_fixture local-action-before-checkout)
+mkdir -p "$local_action_before_checkout/.github/actions/prepare"
+cat >"$local_action_before_checkout/.github/actions/prepare/action.yml" <<'EOF'
+name: Prepare
+description: Prepare runtime
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: echo prepare
+EOF
+cat >"$local_action_before_checkout/.github/workflows/checkout.yml" <<'EOF'
+name: Local action before checkout
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: ./.github/actions/prepare
+      - uses: actions/checkout@0123456789abcdef0123456789abcdef01234567
+        with:
+          persist-credentials: false
+EOF
+track_fixture "$local_action_before_checkout"
+expect_reject "$local_action_before_checkout" "remote actions must not follow executable steps"
+
 checkout_step_environment=$(new_fixture checkout-step-environment)
 cat >"$checkout_step_environment/.github/workflows/checkout.yml" <<'EOF'
 name: Environment-injected checkout
@@ -869,6 +917,66 @@ jobs:
 EOF
 track_fixture "$mixed_privileged_sarif_job"
 expect_reject "$mixed_privileged_sarif_job" "upload-sarif must be the only action in its privileged job"
+
+run_before_sarif=$(new_fixture run-before-sarif)
+cat >"$run_before_sarif/.github/workflows/sarif.yml" <<'EOF'
+name: Run before SARIF upload
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  upload:
+    permissions:
+      contents: read
+      security-events: write
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo "$RUNNER_TEMP/fake-bin" >> "$GITHUB_PATH"
+      - uses: github/codeql-action/upload-sarif@0123456789abcdef0123456789abcdef01234567
+EOF
+track_fixture "$run_before_sarif"
+expect_reject "$run_before_sarif" "remote actions must not follow executable steps"
+
+action_code_tampering=$(new_fixture action-code-tampering)
+cat >"$action_code_tampering/.github/workflows/sarif.yml" <<'EOF'
+name: Downloaded action tampering
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  upload:
+    permissions:
+      contents: read
+      security-events: write
+    runs-on: ubuntu-24.04
+    steps:
+      - run: find "$RUNNER_WORKSPACE/../_actions" -name upload-sarif-entry.js -exec sh -c 'printf malicious > "$1"' _ {} \;
+      - uses: github/codeql-action/upload-sarif@0123456789abcdef0123456789abcdef01234567
+EOF
+track_fixture "$action_code_tampering"
+expect_reject "$action_code_tampering" "remote actions must not follow executable steps"
+
+run_after_sarif=$(new_fixture run-after-sarif)
+cat >"$run_after_sarif/.github/workflows/sarif.yml" <<'EOF'
+name: Run after SARIF upload
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  upload:
+    permissions:
+      contents: read
+      security-events: write
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: github/codeql-action/upload-sarif@0123456789abcdef0123456789abcdef01234567
+      - run: echo after
+EOF
+track_fixture "$run_after_sarif"
+expect_reject "$run_after_sarif" "privileged upload-sarif jobs must contain exactly one step"
 
 sarif_job_environment=$(new_fixture sarif-job-environment)
 cat >"$sarif_job_environment/.github/workflows/sarif.yml" <<'EOF'
