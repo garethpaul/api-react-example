@@ -23,7 +23,8 @@
     "jsdom": "29.1.1",
     "prettier": "3.8.4",
     "vite": "8.0.16",
-    "vitest": "4.1.9"
+    "vitest": "4.1.9",
+    "yaml": "2.9.0"
   },
   "resolutions": {
     "debug": "4.4.3"
@@ -34,6 +35,6 @@
     "format:check": "prettier --check .",
     "lint": "eslint src vite.config.js eslint.config.js",
     "test": "vitest run",
-    "verify": "sh scripts/check-baseline.sh && yarn lint && yarn format:check && yarn test && yarn build"
+    "verify": "node scripts/check-workflow-policy.mjs && sh scripts/test-workflow-policy.sh && sh scripts/check-baseline.sh && yarn lint && yarn format:check && yarn test && yarn build"
   }
 }

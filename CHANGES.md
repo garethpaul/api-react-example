@@ -8,6 +8,13 @@
 - Backend-provided thumbnail URLs use only the default HTTPS port before rendering; browser code cannot inspect DNS answers or the connected peer.
 - Expired photo requests cancel late fetch responses before response metadata or stream access.
 
+## 2026-06-19
+
+- Replaced textual workflow checks with a semantic policy that preserves the
+  canonical Node matrix, recursively inspects local workflow delegation,
+  rejects remote reusable workflows and advanced CodeQL actions, and allows
+  narrowly permissioned third-party SARIF uploads.
+
 ## 2026-06-15
 
 - Upgraded the exactly pinned development checks to ESLint 10.5.0 and

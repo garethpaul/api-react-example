@@ -18,7 +18,6 @@ TOOLCHAIN_PLAN="$ROOT_DIR/docs/plans/2026-06-10-vite-toolchain-migration.md"
 PHOTO_TIMEOUT_PLAN="$ROOT_DIR/docs/plans/2026-06-10-photo-request-timeout.md"
 REQUEST_OWNERSHIP_PLAN="$ROOT_DIR/docs/plans/2026-06-10-photo-request-ownership.md"
 THUMBNAIL_REFERRER_PLAN="$ROOT_DIR/docs/plans/2026-06-12-photo-thumbnail-referrer-privacy.md"
-WORKFLOW="$ROOT_DIR/.github/workflows/check.yml"
 CODEQL_PLAN="$ROOT_DIR/docs/plans/2026-06-12-codeql-baseline.md"
 CONTENT_TYPE_PLAN="$ROOT_DIR/docs/plans/2026-06-13-photo-response-content-type.md"
 RESPONSE_BODY_LIMIT_PLAN="$ROOT_DIR/docs/plans/2026-06-13-photo-response-body-limit.md"
@@ -210,49 +209,11 @@ if [ -f "$ROOT_DIR/public/index.html" ] || [ -f "$ROOT_DIR/src/serviceWorker.js"
   exit 1
 fi
 
-for workflow_contract in \
-  "permissions:" \
-  "contents: read" \
-  "runs-on: ubuntu-24.04" \
-  "cancel-in-progress: true" \
-  "timeout-minutes: 10" \
-  "actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10" \
-  "persist-credentials: false" \
-  "actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e" \
-  "node-version: [20, 22, 24]" \
-  "node-version: \${{ matrix.node-version }}" \
-  "workflow_dispatch:" \
-  "run: corepack yarn install --frozen-lockfile" \
-  "run: make check"; do
-  if ! grep -Fq "$workflow_contract" "$WORKFLOW"; then
-    printf '%s\n' "GitHub Actions workflow must keep contract: $workflow_contract" >&2
-    exit 1
-  fi
-done
-
-if find "$ROOT_DIR/.github/workflows" -type f \( -name '*codeql*.yml' -o -name '*codeql*.yaml' \) -print -quit | grep -q .; then
-  printf '%s\n' "GitHub default CodeQL setup must not be duplicated by an advanced workflow." >&2
-  exit 1
-fi
-
-workflow_paths=$(find "$ROOT_DIR/.github/workflows" -type f \( -name '*.yml' -o -name '*.yaml' \) -print | LC_ALL=C sort)
-expected_workflow_paths=$WORKFLOW
-if [ "$workflow_paths" != "$expected_workflow_paths" ]; then
-  printf '%s\n' "Only the canonical Check workflow is allowed." >&2
-  exit 1
-fi
-
-if grep -E '^[[:space:]]*(-[[:space:]]+)?uses:' "$WORKFLOW" | \
-   grep -Ev '@[0-9a-f]{40}([[:space:]]+#.*)?$' >/dev/null; then
-  printf '%s\n' "GitHub Actions must use immutable commit SHAs." >&2
-  exit 1
-fi
-
 if [ ! -f "$CODEQL_PLAN" ] || \
    ! grep -Fq "status: completed" "$CODEQL_PLAN" || \
    ! grep -Fq "make check" "$CODEQL_PLAN" || \
    ! grep -Fq "external working directory" "$CODEQL_PLAN" || \
-   ! grep -Fq "hostile mutations rejected" "$CODEQL_PLAN" || \
+   ! grep -Fq "Focused hostile mutations reject" "$CODEQL_PLAN" || \
    ! grep -Fq "default setup" "$CODEQL_PLAN" || \
    ! grep -Fq "advanced CodeQL workflow" "$CODEQL_PLAN"; then
   printf '%s\n' "CodeQL plan must record completed local verification." >&2
@@ -264,18 +225,6 @@ if ! grep -Fq "CodeQL default setup analyzes" "$README" || \
    ! grep -Fq "CodeQL default-setup coverage" "$ROOT_DIR/VISION.md" || \
    ! grep -Fq "CodeQL default setup" "$ROOT_DIR/CHANGES.md"; then
   printf '%s\n' "Repository guidance must document the CodeQL trust boundary." >&2
-  exit 1
-fi
-
-if [ "$(grep -Ec '^[[:space:]]*permissions:' "$WORKFLOW")" -ne 1 ] || \
-   grep -Eq 'write-all|contents:[[:space:]]*write|pull-requests:[[:space:]]*write|actions:[[:space:]]*write' "$WORKFLOW"; then
-  printf '%s\n' "GitHub Actions permissions must remain globally read-only." >&2
-  exit 1
-fi
-
-if [ "$(grep -Ec '^[[:space:]]+run:' "$WORKFLOW")" -ne 2 ] || \
-   grep -Eq 'continue-on-error:[[:space:]]*true|if:[[:space:]]*false' "$WORKFLOW"; then
-  printf '%s\n' "GitHub Actions must run exactly the frozen install and full Make gate without bypasses." >&2
   exit 1
 fi
 
@@ -1546,6 +1495,12 @@ fi
 
 if ! grep -Fq "sh scripts/check-baseline.sh" "$PACKAGE_JSON"; then
   printf '%s\n' "package.json verify script must run the baseline check." >&2
+  exit 1
+fi
+
+if ! grep -Fq "node scripts/check-workflow-policy.mjs" "$PACKAGE_JSON" || \
+   ! grep -Fq "sh scripts/test-workflow-policy.sh" "$PACKAGE_JSON"; then
+  printf '%s\n' "package.json verify script must run the semantic workflow policy." >&2
   exit 1
 fi
 
