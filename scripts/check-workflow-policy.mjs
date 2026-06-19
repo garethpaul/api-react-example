@@ -349,6 +349,14 @@ function classifyRemoteUse(reference, path, facts, step) {
       `checkout must disable persisted credentials in ${repositoryPath(path)}`,
     );
   }
+  if (
+    normalizedAction === 'actions/checkout' &&
+    (Object.keys(step.with).length !== 1 ||
+      step.with['persist-credentials'] !== false)
+  ) {
+    reject(`checkout inputs are not allowed in ${repositoryPath(path)}`);
+  }
+  facts.remoteAction = true;
   if (normalizedAction.startsWith('github/codeql-action/')) {
     if (normalizedAction === 'github/codeql-action/upload-sarif') {
       facts.uploadSarif = true;
@@ -356,7 +364,13 @@ function classifyRemoteUse(reference, path, facts, step) {
   }
 }
 
-function scanSteps(steps, path, state, facts) {
+function scanSteps(
+  steps,
+  path,
+  state,
+  facts,
+  { allowRemoteActions = true } = {},
+) {
   if (steps === undefined) return;
   if (!Array.isArray(steps))
     reject(`workflow steps must be a sequence in ${repositoryPath(path)}`);
@@ -369,12 +383,25 @@ function scanSteps(steps, path, state, facts) {
       continue;
     }
     if (step.uses.startsWith('./')) {
+      const disallowedKeys = Object.keys(step).filter(
+        (key) => !['name', 'uses', 'with'].includes(key),
+      );
+      if (disallowedKeys.length > 0) {
+        reject(
+          `local action steps must not define env or conditions in ${repositoryPath(path)}`,
+        );
+      }
       facts.actionUses += 1;
       facts.nonUploadAction = true;
       facts.priorExecutableStep = false;
       scanLocalAction(step.uses, state, facts);
       facts.priorExecutableStep = true;
     } else {
+      if (!allowRemoteActions) {
+        reject(
+          `remote actions are forbidden inside local actions in ${repositoryPath(path)}`,
+        );
+      }
       if (facts.priorExecutableStep) {
         reject(
           `remote actions must not follow executable steps in ${repositoryPath(path)}`,
@@ -404,7 +431,9 @@ function scanLocalAction(reference, state, facts) {
       `local actions must use inspectable composite steps: ${repositoryPath(path)}`,
     );
   }
-  scanSteps(value.runs.steps, path, state, facts);
+  scanSteps(value.runs.steps, path, state, facts, {
+    allowRemoteActions: false,
+  });
   leaveReference(path, state);
 }
 
@@ -471,6 +500,7 @@ function scanWorkflow(path, state, { localReference = false } = {}) {
       delegatedSarif: false,
       nonUploadAction: false,
       priorExecutableStep: false,
+      remoteAction: false,
       uploadSarif: false,
     };
     if (typeof job.uses === 'string') {
@@ -517,6 +547,15 @@ function scanWorkflow(path, state, { localReference = false } = {}) {
       }
     }
     scanSteps(job.steps, workflowPath, state, jobFacts);
+    if (
+      workflowPath !== canonicalWorkflow &&
+      jobFacts.remoteAction &&
+      job.steps.length !== 1
+    ) {
+      reject(
+        `remote-action jobs must contain exactly one step in ${repositoryPath(workflowPath)}`,
+      );
+    }
     if (jobFacts.uploadSarif && jobPermissions['security-events'] !== 'write') {
       reject(
         `upload-sarif requires security-events: write in ${repositoryPath(workflowPath)}`,

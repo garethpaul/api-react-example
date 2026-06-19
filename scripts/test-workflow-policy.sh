@@ -372,7 +372,7 @@ jobs:
       - uses: ./.github/actions/codeql-wrapper
 EOF
 track_fixture "$local_composite_codeql"
-expect_reject "$local_composite_codeql" "advanced CodeQL actions are forbidden"
+expect_reject "$local_composite_codeql" "remote actions are forbidden inside local actions"
 
 safe_local_workflow=$(new_fixture safe-local-workflow)
 cat >"$safe_local_workflow/.github/workflows/reusable.yml" <<'EOF'
@@ -770,10 +770,143 @@ jobs:
       - uses: actions/checkout@0123456789abcdef0123456789abcdef01234567
         with:
           persist-credentials: false
-      - run: echo safe
 EOF
 track_fixture "$safe_checkout"
 expect_accept "$safe_checkout"
+
+run_after_checkout=$(new_fixture run-after-checkout)
+cat >"$run_after_checkout/.github/workflows/checkout.yml" <<'EOF'
+name: Run after checkout
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@0123456789abcdef0123456789abcdef01234567
+        with:
+          persist-credentials: false
+      - run: echo after
+EOF
+track_fixture "$run_after_checkout"
+expect_reject "$run_after_checkout" "remote-action jobs must contain exactly one step"
+
+checkout_replaces_local_action=$(new_fixture checkout-replaces-local-action)
+mkdir -p "$checkout_replaces_local_action/.github/actions/wrapper"
+cat >"$checkout_replaces_local_action/.github/actions/wrapper/action.yml" <<'EOF'
+name: Wrapper
+description: Tracked wrapper
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: echo tracked
+EOF
+cat >"$checkout_replaces_local_action/.github/workflows/checkout.yml" <<'EOF'
+name: Replace local action
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@0123456789abcdef0123456789abcdef01234567
+        with:
+          repository: attacker/runtime-action
+          path: .github/actions/wrapper
+          persist-credentials: false
+      - uses: ./.github/actions/wrapper
+EOF
+track_fixture "$checkout_replaces_local_action"
+expect_reject "$checkout_replaces_local_action" "checkout inputs are not allowed"
+
+checkout_custom_repository=$(new_fixture checkout-custom-repository)
+cat >"$checkout_custom_repository/.github/workflows/checkout.yml" <<'EOF'
+name: Custom repository checkout
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@0123456789abcdef0123456789abcdef01234567
+        with:
+          repository: attacker/runtime-action
+          persist-credentials: false
+EOF
+track_fixture "$checkout_custom_repository"
+expect_reject "$checkout_custom_repository" "checkout inputs are not allowed"
+
+local_action_invocation_environment=$(new_fixture local-action-invocation-environment)
+mkdir -p "$local_action_invocation_environment/.github/actions/echo"
+cat >"$local_action_invocation_environment/.github/actions/echo/action.yml" <<'EOF'
+name: Echo
+description: Echo safely
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: echo safe
+EOF
+cat >"$local_action_invocation_environment/.github/workflows/local.yml" <<'EOF'
+name: Local action environment
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: ./.github/actions/echo
+        env:
+          NODE_OPTIONS: --import=data:text/javascript,console.log(process.env)
+EOF
+track_fixture "$local_action_invocation_environment"
+expect_reject "$local_action_invocation_environment" "local action steps must not define env or conditions"
+
+nested_remote_action=$(new_fixture nested-remote-action)
+mkdir -p "$nested_remote_action/.github/actions/outer" "$nested_remote_action/.github/actions/inner"
+cat >"$nested_remote_action/.github/actions/outer/action.yml" <<'EOF'
+name: Outer
+description: Outer composite
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: echo "$RUNNER_TEMP/fake-bin" >> "$GITHUB_PATH"
+    - uses: ./.github/actions/inner
+EOF
+cat >"$nested_remote_action/.github/actions/inner/action.yml" <<'EOF'
+name: Inner
+description: Inner composite
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@0123456789abcdef0123456789abcdef01234567
+      with:
+        cache: yarn
+EOF
+cat >"$nested_remote_action/.github/workflows/local.yml" <<'EOF'
+name: Nested remote action
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: ./.github/actions/outer
+EOF
+track_fixture "$nested_remote_action"
+expect_reject "$nested_remote_action" "remote actions are forbidden inside local actions"
 
 run_before_checkout=$(new_fixture run-before-checkout)
 cat >"$run_before_checkout/.github/workflows/checkout.yml" <<'EOF'
@@ -916,7 +1049,7 @@ jobs:
       - uses: github/codeql-action/upload-sarif@0123456789abcdef0123456789abcdef01234567
 EOF
 track_fixture "$mixed_privileged_sarif_job"
-expect_reject "$mixed_privileged_sarif_job" "upload-sarif must be the only action in its privileged job"
+expect_reject "$mixed_privileged_sarif_job" "remote-action jobs must contain exactly one step"
 
 run_before_sarif=$(new_fixture run-before-sarif)
 cat >"$run_before_sarif/.github/workflows/sarif.yml" <<'EOF'
@@ -976,7 +1109,7 @@ jobs:
       - run: echo after
 EOF
 track_fixture "$run_after_sarif"
-expect_reject "$run_after_sarif" "privileged upload-sarif jobs must contain exactly one step"
+expect_reject "$run_after_sarif" "remote-action jobs must contain exactly one step"
 
 sarif_job_environment=$(new_fixture sarif-job-environment)
 cat >"$sarif_job_environment/.github/workflows/sarif.yml" <<'EOF'

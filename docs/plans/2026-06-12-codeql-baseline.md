@@ -81,6 +81,14 @@ a human-review and branch-protection boundary, not a defect in this exact
 policy implementation. Future policy changes require exact-patch review and
 fresh hosted evidence.
 
+The policy authenticates the tracked workflow and action graph; it does not
+prove arbitrary application or test code executed by the canonical `make
+check` command is benign. Changes to executable repository code remain a human
+review boundary because such code runs inside the hosted job and can interact
+with runner state. Unrelated workflows therefore cannot combine executable
+steps with token-bearing remote actions, while the unchanged canonical workflow
+is reviewed as one exact semantic contract.
+
 ## Hosted Verification
 
 On head `7e92cdae08e44cebd804745a7182ebc1f04482b1`, Check run
