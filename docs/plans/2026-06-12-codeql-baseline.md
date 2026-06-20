@@ -21,15 +21,24 @@ React sample runtime, dependencies, existing Node matrix, or build behavior.
   GitHub rejects the conflicting configuration modes.
 - Keep the existing Check workflow credential-free, immutable, read-only,
   bounded, and cancellation-aware.
-- Extend the SDK-free repository checker to reject extra workflows, including
-  any duplicate advanced CodeQL workflow.
+- Permit unrelated workflows only when their permissions and action graph pass
+  the semantic workflow policy.
+- Require all executable jobs to use `ubuntu-24.04`, forbid
+  `pull_request_target`, container/service/environment injection, and prevent
+  local reusable workflow calls from receiving secrets.
+- Recursively inspect tracked local composite actions and local reusable
+  workflows, reject cycles and symlinks, and reject all remote reusable
+  workflows because their transitive behavior is outside this repository.
+- Reject advanced CodeQL actions while allowing a SHA-pinned `upload-sarif`
+  action with the narrowly required `security-events: write` permission.
 - Preserve the existing frozen Yarn install and Node 20/22/24 `make check`
   workflow unchanged.
 - Pass local verification and exact-head hosted Check and CodeQL gates.
 
 ## Scope And Verification
 
-This unit changes only static contracts, repository guidance, and evidence.
+This unit changes only development-time policy code, static contracts,
+repository guidance, and evidence.
 Verification includes the untouched baseline, full `make check`,
 external-working-directory execution, workflow parsing, hostile mutations,
 and bounded exact-head hosted queries.
@@ -40,20 +49,53 @@ and bounded exact-head hosted queries.
   `javascript-typescript` on the repository.
 - Removed the conflicting advanced CodeQL workflow after both of its jobs
   failed while the matching default-setup jobs succeeded on the same head.
-- Extended the SDK-free checker to reject extra and advanced CodeQL workflows
-  without changing the existing Check workflow, package graph, or React
-  runtime.
+- Replaced textual singleton-workflow checks with semantic YAML validation.
+- Protected the canonical Check workflow as an exact semantic object, including
+  read-only permissions, checkout credential handling, runner, matrix,
+  conditions, environment, shells, action pins, and command values.
+- Added bounded recursive inspection for tracked local composite actions and
+  local reusable workflows. Remote reusable workflows and advanced CodeQL
+  actions fail closed; pinned `upload-sarif` remains supported.
+- Matched GitHub's direct `.github/workflows` discovery semantics instead of
+  treating inert nested YAML as executable workflow configuration.
+- Added the dependency-free `yaml@2.9.0` parser as an exact development-only
+  dependency without changing the React runtime or production bundle behavior.
 
 ## Verification Completed
 
 - The untouched baseline passed before implementation.
-- `make check` passed the repository contracts, ESLint, Prettier, all 19
+- `make check` passed the repository contracts, ESLint, Prettier, all 124
   Vitest tests, and the Vite production build.
 - The same full gate passed from an external working directory.
-- Focused hostile mutations rejected duplicate CodeQL and extra workflows,
-  missing default-setup and advanced-workflow plan contracts, stale repository
-  guidance, and incomplete plan drift.
+- Focused hostile mutations reject writable permissions, credential-persisting
+  checkout, authenticated command injection, job environment/default/condition
+  changes, local action and reusable-workflow indirection, remote reusable
+  workflows, Unicode ambiguity, duplicate keys, directives, unsupported tags,
+  aliases, cycles, symlinks, excessive SARIF permissions, self-hosted and
+  matrix-selected runners, mutable container/service execution,
+  `pull_request_target`, and inherited reusable-workflow secrets.
+- Positive fixtures preserve unrelated read-only workflows, standard tagged
+  scalars, hosted matrices, local inspectable delegation, reusable-workflow
+  matrices, inert nested YAML, and narrowly permissioned `upload-sarif`
+  workflows. The executable workflow-policy suite contains 77 cases.
 - Workflow parsing, `git diff --check`, and the secret-pattern scan passed.
+
+## Trust Boundary
+
+The in-tree checker proves the behavior of the exact reviewed patch and catches
+uncoordinated workflow drift. It cannot authorize a future coordinated change
+that weakens the checker, fixtures, Make wiring, and workflow together. That is
+a human-review and branch-protection boundary, not a defect in this exact
+policy implementation. Future policy changes require exact-patch review and
+fresh hosted evidence.
+
+The policy authenticates the tracked workflow and action graph; it does not
+prove arbitrary application or test code executed by the canonical `make
+check` command is benign. Changes to executable repository code remain a human
+review boundary because such code runs inside the hosted job and can interact
+with runner state. Unrelated workflows therefore cannot combine executable
+steps with token-bearing remote actions, while the unchanged canonical workflow
+is reviewed as one exact semantic contract.
 
 ## Hosted Verification
 

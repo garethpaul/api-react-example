@@ -79,7 +79,12 @@ maintenance runs. The workflow uses Ubuntu 24.04 and cancels superseded runs.
 GitHub CodeQL default setup analyzes both the GitHub Actions and
 JavaScript/TypeScript surfaces. That repository setting is intentionally not
 duplicated by an advanced in-repository workflow because GitHub rejects both
-configuration modes running together.
+configuration modes running together. `make check` also semantically protects
+the canonical workflow, recursively inspects tracked local composite actions
+and reusable workflows, rejects remote reusable workflows, and permits only
+SHA-pinned third-party actions. An unrelated workflow may upload third-party
+SARIF with the pinned `upload-sarif` action and the narrowly required
+`security-events: write` permission.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
