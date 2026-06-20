@@ -2,6 +2,7 @@
 set -eu
 
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+MAKEFILE="$ROOT_DIR/Makefile"
 PACKAGE_JSON="$ROOT_DIR/package.json"
 PHOTOS="$ROOT_DIR/src/components/Photos.jsx"
 APP_TEST="$ROOT_DIR/src/App.test.jsx"
@@ -38,6 +39,11 @@ LATE_RESPONSE_PLAN="$ROOT_DIR/docs/plans/2026-06-16-photo-late-response-cancella
 THUMBNAIL_SPECIAL_IPV6_PLAN="$ROOT_DIR/docs/plans/2026-06-16-photo-thumbnail-special-ipv6-literals.md"
 THUMBNAIL_LOCAL_USE_NAT64_PLAN="$ROOT_DIR/docs/plans/2026-06-17-photo-thumbnail-local-use-nat64.md"
 THUMBNAIL_NAT64_EMBEDDED_IPV4_PLAN="$ROOT_DIR/docs/plans/2026-06-19-photo-thumbnail-nat64-embedded-ipv4.md"
+
+if ! grep -Fxq 'override ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))' "$MAKEFILE"; then
+  printf '%s\n' "Makefile ROOT must be derived from its own path and reject command-line overrides." >&2
+  exit 1
+fi
 
 if [ ! -f "$ROOT_DIR/CHANGES.md" ]; then
   printf '%s\n' "CHANGES.md must document repository maintenance." >&2

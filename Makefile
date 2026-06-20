@@ -1,7 +1,7 @@
 .PHONY: build check dependency-policy lint test verify workflow-policy
 
 YARN ?= corepack yarn
-ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+override ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 dependency-policy:
 	cd $(ROOT) && node scripts/check-dependency-policy.mjs
