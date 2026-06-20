@@ -14,6 +14,10 @@
   canonical Node matrix, recursively inspects local workflow delegation,
   rejects remote reusable workflows and advanced CodeQL actions, and allows
   narrowly permissioned third-party SARIF uploads.
+- Restricted executable jobs to the pinned GitHub-hosted runner, rejected
+  `pull_request_target`, containers, services, environments, and inherited
+  reusable-workflow secrets, and ignored nested YAML that GitHub does not load
+  as workflows.
 
 ## 2026-06-15
 

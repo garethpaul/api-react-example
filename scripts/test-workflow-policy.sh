@@ -26,8 +26,13 @@ track_fixture() {
 expect_accept() {
   fixture=$1
   if [ -n "${ACTIONLINT:-}" ]; then
-    find "$fixture/.github/workflows" -type f \( -name '*.yml' -o -name '*.yaml' \) -print0 | \
-      xargs -0 "$ACTIONLINT"
+    for workflow in \
+      "$fixture"/.github/workflows/*.yml \
+      "$fixture"/.github/workflows/*.yaml
+    do
+      [ -f "$workflow" ] || continue
+      "$ACTIONLINT" "$workflow"
+    done
   fi
   if ! output=$(node "$CHECKER" "$fixture" 2>&1); then
     printf '%s\n' "expected policy acceptance for $fixture" >&2
@@ -846,7 +851,7 @@ jobs:
           persist-credentials: false
 EOF
 track_fixture "$checkout_container_environment"
-expect_reject "$checkout_container_environment" "remote-action jobs contain unsupported keys"
+expect_reject "$checkout_container_environment" "jobs must not define env, defaults, conditions, containers"
 
 checkout_service=$(new_fixture checkout-service)
 cat >"$checkout_service/.github/workflows/checkout.yml" <<'EOF'
@@ -867,7 +872,7 @@ jobs:
           persist-credentials: false
 EOF
 track_fixture "$checkout_service"
-expect_reject "$checkout_service" "remote-action jobs contain unsupported keys"
+expect_reject "$checkout_service" "jobs must not define env, defaults, conditions, containers"
 
 checkout_self_hosted=$(new_fixture checkout-self-hosted)
 cat >"$checkout_self_hosted/.github/workflows/checkout.yml" <<'EOF'
@@ -885,7 +890,7 @@ jobs:
           persist-credentials: false
 EOF
 track_fixture "$checkout_self_hosted"
-expect_reject "$checkout_self_hosted" "remote-action jobs must run on ubuntu-24.04"
+expect_reject "$checkout_self_hosted" "executable jobs must run on ubuntu-24.04"
 
 checkout_strategy=$(new_fixture checkout-strategy)
 cat >"$checkout_strategy/.github/workflows/checkout.yml" <<'EOF'
@@ -1127,7 +1132,7 @@ jobs:
       - uses: github/codeql-action/upload-sarif@0123456789abcdef0123456789abcdef01234567
 EOF
 track_fixture "$pull_request_target_upload"
-expect_reject "$pull_request_target_upload" "upload-sarif is forbidden for pull_request_target"
+expect_reject "$pull_request_target_upload" "pull_request_target is forbidden"
 
 scalar_pull_request_target_upload=$(new_fixture scalar-pull-request-target-upload)
 cat >"$scalar_pull_request_target_upload/.github/workflows/sarif.yml" <<'EOF'
@@ -1145,7 +1150,7 @@ jobs:
       - uses: github/codeql-action/upload-sarif@0123456789abcdef0123456789abcdef01234567
 EOF
 track_fixture "$scalar_pull_request_target_upload"
-expect_reject "$scalar_pull_request_target_upload" "upload-sarif is forbidden for pull_request_target"
+expect_reject "$scalar_pull_request_target_upload" "pull_request_target is forbidden"
 
 sequence_pull_request_target_upload=$(new_fixture sequence-pull-request-target-upload)
 cat >"$sequence_pull_request_target_upload/.github/workflows/sarif.yml" <<'EOF'
@@ -1163,7 +1168,7 @@ jobs:
       - uses: github/codeql-action/upload-sarif@0123456789abcdef0123456789abcdef01234567
 EOF
 track_fixture "$sequence_pull_request_target_upload"
-expect_reject "$sequence_pull_request_target_upload" "upload-sarif is forbidden for pull_request_target"
+expect_reject "$sequence_pull_request_target_upload" "pull_request_target is forbidden"
 
 mixed_privileged_sarif_job=$(new_fixture mixed-privileged-sarif-job)
 cat >"$mixed_privileged_sarif_job/.github/workflows/sarif.yml" <<'EOF'
@@ -1264,7 +1269,7 @@ jobs:
       - uses: github/codeql-action/upload-sarif@0123456789abcdef0123456789abcdef01234567
 EOF
 track_fixture "$sarif_job_environment"
-expect_reject "$sarif_job_environment" "jobs must not define env, defaults, or conditions"
+expect_reject "$sarif_job_environment" "jobs must not define env, defaults, conditions"
 
 workflow_sarif_environment=$(new_fixture workflow-sarif-environment)
 cat >"$workflow_sarif_environment/.github/workflows/sarif.yml" <<'EOF'
@@ -1321,7 +1326,7 @@ jobs:
       - run: echo check
 EOF
 track_fixture "$unrelated_job_condition"
-expect_reject "$unrelated_job_condition" "jobs must not define env, defaults, or conditions"
+expect_reject "$unrelated_job_condition" "jobs must not define env, defaults, conditions"
 
 sarif_step_environment=$(new_fixture sarif-step-environment)
 cat >"$sarif_step_environment/.github/workflows/sarif.yml" <<'EOF'
@@ -1357,5 +1362,181 @@ jobs: {}
 EOF
 track_fixture "$tag_directive"
 expect_reject "$tag_directive" "YAML directives are forbidden"
+
+pull_request_target_shell=$(new_fixture pull-request-target-shell)
+cat >"$pull_request_target_shell/.github/workflows/target.yml" <<'EOF'
+name: Pull request target shell
+on:
+  pull_request_target:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - run: jq -r .pull_request.head.sha "$GITHUB_EVENT_PATH"
+EOF
+track_fixture "$pull_request_target_shell"
+expect_reject "$pull_request_target_shell" "pull_request_target is forbidden"
+
+self_hosted_shell=$(new_fixture self-hosted-shell)
+cat >"$self_hosted_shell/.github/workflows/self-hosted.yml" <<'EOF'
+name: Self-hosted shell
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: self-hosted
+    steps:
+      - run: printenv >/dev/null
+EOF
+track_fixture "$self_hosted_shell"
+expect_reject "$self_hosted_shell" "executable jobs must run on ubuntu-24.04"
+
+matrix_runner=$(new_fixture matrix-runner)
+cat >"$matrix_runner/.github/workflows/matrix-runner.yml" <<'EOF'
+name: Matrix runner
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    strategy:
+      matrix:
+        runner: [ubuntu-24.04, self-hosted]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - run: echo inspect
+EOF
+track_fixture "$matrix_runner"
+expect_reject "$matrix_runner" "executable jobs must run on ubuntu-24.04"
+
+safe_matrix=$(new_fixture safe-matrix)
+cat >"$safe_matrix/.github/workflows/matrix.yml" <<'EOF'
+name: Safe matrix
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    strategy:
+      matrix:
+        node-version: [20, 22, 24]
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo "${{ matrix.node-version }}"
+EOF
+track_fixture "$safe_matrix"
+expect_accept "$safe_matrix"
+
+container_job=$(new_fixture container-job)
+cat >"$container_job/.github/workflows/container.yml" <<'EOF'
+name: Container job
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    container: attacker.example/tooling:latest
+    steps:
+      - run: echo inspect
+EOF
+track_fixture "$container_job"
+expect_reject "$container_job" "jobs must not define env, defaults, conditions, containers"
+
+service_job=$(new_fixture service-job)
+cat >"$service_job/.github/workflows/service.yml" <<'EOF'
+name: Service job
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    services:
+      database:
+        image: attacker.example/database:latest
+    steps:
+      - run: echo inspect
+EOF
+track_fixture "$service_job"
+expect_reject "$service_job" "jobs must not define env, defaults, conditions, containers"
+
+reusable_secrets=$(new_fixture reusable-secrets)
+cat >"$reusable_secrets/.github/workflows/reusable.yml" <<'EOF'
+name: Reusable
+on:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo inspect
+EOF
+cat >"$reusable_secrets/.github/workflows/caller.yml" <<'EOF'
+name: Reusable caller
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    uses: ./.github/workflows/reusable.yml
+    secrets: inherit
+EOF
+track_fixture "$reusable_secrets"
+expect_reject "$reusable_secrets" "local reusable workflow calls must not receive secrets"
+
+reusable_matrix=$(new_fixture reusable-matrix)
+cat >"$reusable_matrix/.github/workflows/reusable.yml" <<'EOF'
+name: Reusable
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: number
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo "${{ inputs.version }}"
+EOF
+cat >"$reusable_matrix/.github/workflows/caller.yml" <<'EOF'
+name: Reusable matrix caller
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    strategy:
+      matrix:
+        version: [20, 22, 24]
+    uses: ./.github/workflows/reusable.yml
+    with:
+      version: ${{ matrix.version }}
+EOF
+track_fixture "$reusable_matrix"
+expect_accept "$reusable_matrix"
+
+nested_yaml=$(new_fixture nested-yaml)
+mkdir -p "$nested_yaml/.github/workflows/docs"
+cat >"$nested_yaml/.github/workflows/docs/example.yml" <<'EOF'
+example: documentation only
+EOF
+track_fixture "$nested_yaml"
+expect_accept "$nested_yaml"
 
 printf '%s\n' "workflow policy tests passed: $PASS_COUNT"

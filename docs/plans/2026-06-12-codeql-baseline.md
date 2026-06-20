@@ -23,6 +23,9 @@ React sample runtime, dependencies, existing Node matrix, or build behavior.
   bounded, and cancellation-aware.
 - Permit unrelated workflows only when their permissions and action graph pass
   the semantic workflow policy.
+- Require all executable jobs to use `ubuntu-24.04`, forbid
+  `pull_request_target`, container/service/environment injection, and prevent
+  local reusable workflow calls from receiving secrets.
 - Recursively inspect tracked local composite actions and local reusable
   workflows, reject cycles and symlinks, and reject all remote reusable
   workflows because their transitive behavior is outside this repository.
@@ -53,23 +56,28 @@ and bounded exact-head hosted queries.
 - Added bounded recursive inspection for tracked local composite actions and
   local reusable workflows. Remote reusable workflows and advanced CodeQL
   actions fail closed; pinned `upload-sarif` remains supported.
+- Matched GitHub's direct `.github/workflows` discovery semantics instead of
+  treating inert nested YAML as executable workflow configuration.
 - Added the dependency-free `yaml@2.9.0` parser as an exact development-only
   dependency without changing the React runtime or production bundle behavior.
 
 ## Verification Completed
 
 - The untouched baseline passed before implementation.
-- `make check` passed the repository contracts, ESLint, Prettier, all 19
+- `make check` passed the repository contracts, ESLint, Prettier, all 124
   Vitest tests, and the Vite production build.
 - The same full gate passed from an external working directory.
 - Focused hostile mutations reject writable permissions, credential-persisting
   checkout, authenticated command injection, job environment/default/condition
   changes, local action and reusable-workflow indirection, remote reusable
   workflows, Unicode ambiguity, duplicate keys, directives, unsupported tags,
-  aliases, cycles, symlinks, and excessive SARIF permissions.
+  aliases, cycles, symlinks, excessive SARIF permissions, self-hosted and
+  matrix-selected runners, mutable container/service execution,
+  `pull_request_target`, and inherited reusable-workflow secrets.
 - Positive fixtures preserve unrelated read-only workflows, standard tagged
-  scalars, local inspectable delegation, and narrowly permissioned
-  `upload-sarif` workflows.
+  scalars, hosted matrices, local inspectable delegation, reusable-workflow
+  matrices, inert nested YAML, and narrowly permissioned `upload-sarif`
+  workflows. The executable workflow-policy suite contains 77 cases.
 - Workflow parsing, `git diff --check`, and the secret-pattern scan passed.
 
 ## Trust Boundary

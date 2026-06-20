@@ -143,7 +143,7 @@ function workflowFiles(directory) {
           `local references must not traverse symlinks: ${repositoryPath(path)}`,
         );
       }
-      return entry.isDirectory() ? workflowFiles(path) : [path];
+      return entry.isFile() ? [path] : [];
     })
     .filter((path) => /\.ya?ml$/u.test(path))
     .sort();
@@ -242,6 +242,13 @@ function rejectCredentialExpressions(value, path) {
       );
     }
   });
+}
+
+function workflowEvents(value) {
+  if (typeof value === 'string') return [value];
+  if (Array.isArray(value)) return value;
+  if (value !== null && typeof value === 'object') return Object.keys(value);
+  return [];
 }
 
 function validatePermissionShape(value, path) {
@@ -469,6 +476,11 @@ function scanWorkflow(path, state, { localReference = false } = {}) {
   if (workflowPath !== canonicalWorkflow) {
     rejectCredentialExpressions(value, workflowPath);
   }
+  if (workflowEvents(value.on).includes('pull_request_target')) {
+    reject(
+      `pull_request_target is forbidden in ${repositoryPath(workflowPath)}`,
+    );
+  }
   if (value.env !== undefined || value.defaults !== undefined) {
     reject(
       `workflows must not define env or defaults in ${repositoryPath(workflowPath)}`,
@@ -499,10 +511,13 @@ function scanWorkflow(path, state, { localReference = false } = {}) {
     if (
       job.env !== undefined ||
       job.defaults !== undefined ||
-      job.if !== undefined
+      job.if !== undefined ||
+      job.container !== undefined ||
+      job.services !== undefined ||
+      job.environment !== undefined
     ) {
       reject(
-        `jobs must not define env, defaults, or conditions in ${repositoryPath(workflowPath)}`,
+        `jobs must not define env, defaults, conditions, containers, services, or environments in ${repositoryPath(workflowPath)}`,
       );
     }
     const jobPermissions =
@@ -533,6 +548,28 @@ function scanWorkflow(path, state, { localReference = false } = {}) {
           `invalid reusable workflow reference in ${repositoryPath(workflowPath)}: ${job.uses}`,
         );
       }
+      if (job.secrets !== undefined) {
+        reject(
+          `local reusable workflow calls must not receive secrets in ${repositoryPath(workflowPath)}`,
+        );
+      }
+      const disallowedKeys = Object.keys(job).filter(
+        (key) =>
+          ![
+            'concurrency',
+            'name',
+            'needs',
+            'permissions',
+            'strategy',
+            'uses',
+            'with',
+          ].includes(key),
+      );
+      if (disallowedKeys.length > 0) {
+        reject(
+          `local reusable workflow calls contain unsupported keys in ${repositoryPath(workflowPath)}`,
+        );
+      }
       const reusablePath = localReferencePath(job.uses);
       if (
         !/^\.github\/workflows\/[^/]+\.ya?ml$/u.test(
@@ -559,6 +596,11 @@ function scanWorkflow(path, state, { localReference = false } = {}) {
         jobFacts.delegatedSarif = true;
         jobFacts.uploadSarif = true;
       }
+    }
+    if (job.steps !== undefined && job['runs-on'] !== 'ubuntu-24.04') {
+      reject(
+        `executable jobs must run on ubuntu-24.04 in ${repositoryPath(workflowPath)}`,
+      );
     }
     scanSteps(job.steps, workflowPath, state, jobFacts, {
       canonical: workflowPath === canonicalWorkflow,
@@ -643,18 +685,6 @@ function scanWorkflow(path, state, { localReference = false } = {}) {
       );
     }
     facts.uploadSarif ||= jobFacts.uploadSarif;
-  }
-  if (
-    facts.uploadSarif &&
-    ((typeof value.on === 'string' && value.on === 'pull_request_target') ||
-      (Array.isArray(value.on) && value.on.includes('pull_request_target')) ||
-      (value.on !== null &&
-        typeof value.on === 'object' &&
-        Object.hasOwn(value.on, 'pull_request_target')))
-  ) {
-    reject(
-      `upload-sarif is forbidden for pull_request_target in ${repositoryPath(workflowPath)}`,
-    );
   }
   if (localReference) leaveReference(workflowPath, state);
   return facts;
