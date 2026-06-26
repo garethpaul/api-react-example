@@ -56,6 +56,8 @@ Priority:
 - Expired photo requests cancel late fetch responses before response metadata or stream access.
 - Keep the app small enough for beginners to inspect
 - Keep CodeQL default-setup coverage for workflow and JavaScript trust boundaries
+- Keep `make check` authoritative against startup files, later recipe
+  replacement, unsafe modes, and caller-selected execution commands
 
 Next priorities:
 

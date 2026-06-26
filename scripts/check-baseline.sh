@@ -40,9 +40,25 @@ THUMBNAIL_SPECIAL_IPV6_PLAN="$ROOT_DIR/docs/plans/2026-06-16-photo-thumbnail-spe
 THUMBNAIL_LOCAL_USE_NAT64_PLAN="$ROOT_DIR/docs/plans/2026-06-17-photo-thumbnail-local-use-nat64.md"
 THUMBNAIL_NAT64_EMBEDDED_IPV4_PLAN="$ROOT_DIR/docs/plans/2026-06-19-photo-thumbnail-nat64-embedded-ipv4.md"
 VISIBLE_TITLE_PLAN="$ROOT_DIR/docs/plans/2026-06-26-photo-visible-title-validation.md"
+MAKE_AUTHORITY_PLAN="$ROOT_DIR/docs/plans/2026-06-26-make-invocation-authority.md"
 
-if ! grep -Fxq 'override ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))' "$MAKEFILE"; then
-  printf '%s\n' "Makefile ROOT must be derived from its own path and reject command-line overrides." >&2
+if ! grep -Fxq 'override REPOSITORY_MAKEFILE := $(value MAKEFILE_LIST)' "$MAKEFILE" || \
+   ! grep -Fxq 'override ROOT :=' "$MAKEFILE" || \
+   ! grep -Fq 'ROOT=$$(CDPATH= cd -- "$$repository_directory" && pwd -P)' "$MAKEFILE"; then
+  printf '%s\n' "Makefile root must be derived inside guarded repository recipes." >&2
+  exit 1
+fi
+
+if ! grep -Fq 'authority-test build check dependency-policy lint test verify workflow-policy:: __repository-make-authority' "$MAKEFILE" || \
+   ! grep -Fq 'multiple -f Makefiles are not supported' "$MAKEFILE" || \
+   ! grep -Fq 'non-executing or error-ignoring MAKEFLAGS are not supported' "$MAKEFILE" || \
+   ! grep -Fq '/bin/sh scripts/test-makefile-authority.sh' "$MAKEFILE"; then
+  printf '%s\n' "Makefile must preserve invocation authority and execute its causal regression suite." >&2
+  exit 1
+fi
+
+if [ ! -x "$ROOT_DIR/scripts/test-makefile-authority.sh" ]; then
+  printf '%s\n' "Make authority regression suite must remain executable." >&2
   exit 1
 fi
 
@@ -251,13 +267,16 @@ if ! grep -Fq "CodeQL default setup analyzes" "$README" || \
   exit 1
 fi
 
-if ! grep -Fq 'ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))' "$ROOT_DIR/Makefile"; then
-  printf '%s\n' "Makefile checks must be location-independent." >&2
+if ! grep -Fq 'makefile=$${REPOSITORY_MAKEFILE# }' "$ROOT_DIR/Makefile" || \
+   ! grep -Fq 'cd "$$ROOT" &&' "$ROOT_DIR/Makefile"; then
+  printf '%s\n' "Makefile checks must be location-independent and quote the repository root." >&2
   exit 1
 fi
 
-if ! grep -Fq 'cd $(ROOT) &&' "$ROOT_DIR/Makefile"; then
-  printf '%s\n' "Makefile commands must execute from the repository root." >&2
+if [ ! -f "$MAKE_AUTHORITY_PLAN" ] || \
+   ! grep -Fq "Status: Completed" "$MAKE_AUTHORITY_PLAN" || \
+   ! grep -Fq "make check" "$MAKE_AUTHORITY_PLAN"; then
+  printf '%s\n' "Make invocation authority plan must be complete and require make check." >&2
   exit 1
 fi
 
