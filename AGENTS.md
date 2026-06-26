@@ -29,7 +29,7 @@
 
 ## Coding conventions
 
-- Language mix noted in the README: JavaScript (6), shell (1).
+- Language mix noted in the README: JavaScript (6), shell (2).
 - Use Node.js 20.19 or newer through Corepack-backed Yarn 1.22.22.
 - The frontend toolchain is React 19 with Vite 8 and Vitest 4.
 - ESLint and Prettier are configured explicitly rather than through Create React App.
@@ -39,6 +39,8 @@
 
 - Test-related files detected: `docs/plans/2026-06-08-api-react-example-security-test-baseline.md`, `src/App.test.jsx`, `src/setupTests.js`
 - Start with the narrowest relevant test or Make target, then run `make check` before handing off if the change is not documentation-only.
+- Preserve the Make startup-file, later-file, mode, shell, Node, Yarn, and root
+  authority contracts in `scripts/test-makefile-authority.sh`.
 - Keep README verification notes in sync when commands, fixtures, or supported toolchains change.
 
 ## PR / change guidance
@@ -64,6 +66,8 @@
 - Photo titles containing only Unicode format or combining-mark characters use
   the existing error state instead of rendering blank headings or alt text.
 - Photo IDs must be unique after React key coercion before cards are rendered.
+- Repository verification rejects alternate Make graphs and caller-selected
+  execution commands before running the reviewed Node/Yarn checks.
 - Each photo load owns its abort controller and timeout; only the active request may update state or clear request resources.
 - Expired photo requests cancel late fetch responses before response metadata or stream access.
 - Photo request timeout and unmount cleanup cancel pending response readers even

@@ -8,7 +8,7 @@
 
 `garethpaul/api-react-example` is a JavaScript web application or frontend sample. React API Sample
 
-This README is based on the checked-in source, manifests, scripts, and repository metadata on the `master` branch. The project language mix found during review was: JavaScript (6), shell (1).
+This README is based on the checked-in source, manifests, scripts, and repository metadata on the `master` branch. The project language mix found during review was: JavaScript (6), shell (2).
 
 ## Repository Contents
 
@@ -66,6 +66,7 @@ Run the source baseline, lint, tests, and production build:
 
 ```sh
 make check
+sh scripts/test-makefile-authority.sh
 sh scripts/check-baseline.sh
 corepack yarn lint
 corepack yarn test
@@ -76,6 +77,11 @@ corepack yarn verify
 GitHub Actions performs the frozen Yarn install and runs the same `make check`
 gate on Node 20, 22, and 24 for pull requests, pushes to `master`, and manual
 maintenance runs. The workflow uses Ubuntu 24.04 and cancels superseded runs.
+The Make entry point rejects preloaded or later Makefiles, caller-selected
+Make flags, non-executing or error-ignoring modes, and command overrides for
+the shell, Node, Yarn, and repository root before the reviewed graph can run.
+Its causal authority suite also verifies absolute external invocation and
+checkout paths containing spaces, quotes, brackets, and shell metacharacters.
 GitHub CodeQL default setup analyzes both the GitHub Actions and
 JavaScript/TypeScript surfaces. That repository setting is intentionally not
 duplicated by an advanced in-repository workflow because GitHub rejects both

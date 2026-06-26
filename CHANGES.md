@@ -1,5 +1,66 @@
 # API React Example Changes
 
+## 2026-06-26 14:29 PDT - P1 - Make verification invocation authoritative
+
+### Summary
+
+Closed a false-green verification boundary where a later Makefile or unsafe
+GNU Make mode could report a passing `check` without executing the reviewed
+Node, lint, component-test, or production-build graph.
+
+### Work completed
+
+- Converted public verification targets to guarded double-colon rules.
+- Rejected startup/later Makefiles, caller invocation variables, and ten
+  non-executing or error-ignoring modes.
+- Fixed shell, Node, Corepack/Yarn, and repository-root ownership inside the
+  reviewed Makefile.
+- Added 24 causal authority cases, external-root coverage, and hostile checkout
+  path coverage.
+
+### Threads
+
+- None; the focused Make, shell-test, baseline, and documentation work was
+  completed directly.
+
+### Files changed
+
+- `Makefile` — authoritative invocation and guarded repository recipes.
+- `scripts/test-makefile-authority.sh` — causal replacement, mode, override,
+  external-root, and hostile-path regressions.
+- `scripts/check-baseline.sh` — structural authority and plan contracts.
+- `README.md`, `VISION.md`, `AGENTS.md`,
+  `docs/plans/2026-06-26-make-invocation-authority.md` — public boundary and
+  verification evidence.
+
+### Validation
+
+- `/bin/sh scripts/test-makefile-authority.sh` — 24 authority cases passed.
+- `/bin/sh scripts/check-baseline.sh` — passed.
+- Node 20.20.2, 22.16.0, and 24.17.0 `make check` — passed with 77
+  workflow-policy tests, dependency-policy mutations, lint, format, 128
+  component tests, and production builds.
+- Absolute external-directory Make verification — passed on Node 20.20.2.
+- Hosted Node 20/22/24 Check run `28266447712` and CodeQL run
+  `28266439237` — passed on the initial PR head.
+
+### Bugs / findings
+
+- P1 fixed: a later single-colon Makefile replaced every leaf recipe and exited
+  zero; `make -n check` also exited zero without executing verification.
+
+### Blockers
+
+- The host default was unsupported Node 18 without Corepack; validation used
+  the installed supported Node 20/22/24 toolchains.
+- Codex review was attempted once and skipped after HTTP 401 authentication
+  failures, as permitted by the maintenance workflow.
+
+### Next action
+
+- Merge only after all hosted Node and CodeQL checks pass on the exact final
+  head.
+
 - Backend-provided thumbnail URLs cannot explicitly target localhost, loopback, private, link-local, or unspecified IP literals before rendering; DNS-style hosts are not resolved by this syntactic check.
 - Backend-provided thumbnail URLs cannot explicitly target IPv4 shared address space before rendering.
 - Backend-provided thumbnail URLs reject multicast and reserved future-use IP literals before rendering.
