@@ -41,7 +41,8 @@ Node, lint, component-test, or production-build graph.
   workflow-policy tests, dependency-policy mutations, lint, format, 128
   component tests, and production builds.
 - Absolute external-directory Make verification — passed on Node 20.20.2.
-- Hosted verification — pending.
+- Hosted Node 20/22/24 Check run `28266447712` and CodeQL run
+  `28266439237` — passed on the initial PR head.
 
 ### Bugs / findings
 
@@ -51,12 +52,14 @@ Node, lint, component-test, or production-build graph.
 ### Blockers
 
 - The host default was unsupported Node 18 without Corepack; validation used
-  the installed supported Node 20/22/24 toolchains. Hosted CI and CodeQL remain
-  to be run on the final PR head.
+  the installed supported Node 20/22/24 toolchains.
+- Codex review was attempted once and skipped after HTTP 401 authentication
+  failures, as permitted by the maintenance workflow.
 
 ### Next action
 
-- Open the PR and require all hosted Node and CodeQL checks on the exact head.
+- Merge only after all hosted Node and CodeQL checks pass on the exact final
+  head.
 
 - Backend-provided thumbnail URLs cannot explicitly target localhost, loopback, private, link-local, or unspecified IP literals before rendering; DNS-style hosts are not resolved by this syntactic check.
 - Backend-provided thumbnail URLs cannot explicitly target IPv4 shared address space before rendering.
