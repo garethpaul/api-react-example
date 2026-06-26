@@ -21,9 +21,15 @@ const BLOCKED_SPECIAL_IPV6_PREFIXES = [
     prefixLength: Number(prefixLength),
   };
 });
+const VISIBLE_TITLE_CHARACTER =
+  /[\p{Letter}\p{Number}\p{Punctuation}\p{Symbol}]/u;
 
 function hasText(value) {
   return typeof value === 'string' && value.trim().length > 0;
+}
+
+function hasVisibleTitle(value) {
+  return typeof value === 'string' && VISIBLE_TITLE_CHARACTER.test(value);
 }
 
 function isPhotoId(value) {
@@ -390,7 +396,7 @@ export function isRenderablePhoto(photo) {
     photo.id !== null &&
     photo.id !== undefined &&
     isPhotoId(photo.id) &&
-    hasText(photo.title) &&
+    hasVisibleTitle(photo.title) &&
     isHttpsUrl(photo.thumbnailUrl)
   );
 }

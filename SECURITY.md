@@ -42,6 +42,8 @@ Helpful reports include:
 - Oversized and unstreamable photo response envelopes cancel unread bodies
   without allowing cleanup failures to replace validation errors.
 - Malformed and unsafe-range photo Content-Length declarations cancel unread bodies before preserving validation errors.
+- Photo titles containing only Unicode format or combining-mark characters are
+  rejected before blank headings and image alternatives can render.
 - Photo response streams reject malformed or empty chunks before buffer writes
   and cancel the reader on validation failure.
 - Backend-provided thumbnail URLs cannot explicitly target localhost, loopback, private, link-local, or unspecified IP literals before rendering; DNS-style hosts are not resolved by this syntactic check.

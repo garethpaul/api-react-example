@@ -39,6 +39,7 @@ LATE_RESPONSE_PLAN="$ROOT_DIR/docs/plans/2026-06-16-photo-late-response-cancella
 THUMBNAIL_SPECIAL_IPV6_PLAN="$ROOT_DIR/docs/plans/2026-06-16-photo-thumbnail-special-ipv6-literals.md"
 THUMBNAIL_LOCAL_USE_NAT64_PLAN="$ROOT_DIR/docs/plans/2026-06-17-photo-thumbnail-local-use-nat64.md"
 THUMBNAIL_NAT64_EMBEDDED_IPV4_PLAN="$ROOT_DIR/docs/plans/2026-06-19-photo-thumbnail-nat64-embedded-ipv4.md"
+VISIBLE_TITLE_PLAN="$ROOT_DIR/docs/plans/2026-06-26-photo-visible-title-validation.md"
 
 if ! grep -Fxq 'override ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))' "$MAKEFILE"; then
   printf '%s\n' "Makefile ROOT must be derived from its own path and reject command-line overrides." >&2
@@ -52,6 +53,22 @@ fi
 
 if ! grep -Fq "API React Example Changes" "$ROOT_DIR/CHANGES.md"; then
   printf '%s\n' "CHANGES.md must identify the project." >&2
+  exit 1
+fi
+
+if [ ! -f "$VISIBLE_TITLE_PLAN" ] || \
+  ! grep -Fq "Status: Completed" "$VISIBLE_TITLE_PLAN" || \
+  ! grep -Fq "make check" "$VISIBLE_TITLE_PLAN"; then
+  printf '%s\n' "Visible photo title validation plan must be complete and require make check." >&2
+  exit 1
+fi
+
+if ! grep -Fq "Photo titles must contain a visible letter" "$README" || \
+  ! grep -Fq "Photo titles containing only Unicode format or combining-mark characters" "$ROOT_DIR/SECURITY.md" || \
+  ! grep -Fq "Require a visible letter, number, punctuation mark, or symbol" "$ROOT_DIR/VISION.md" || \
+  ! grep -Fq "Photo titles containing only Unicode format or combining-mark characters" "$ROOT_DIR/AGENTS.md" || \
+  ! grep -Fq "Rejected photo titles containing only Unicode format or combining-mark" "$ROOT_DIR/CHANGES.md"; then
+  printf '%s\n' "Maintained guidance must document the visible photo title boundary." >&2
   exit 1
 fi
 
@@ -442,8 +459,13 @@ if ! grep -Fq "isPhotoId(photo.id)" "$PHOTOS"; then
   exit 1
 fi
 
-if ! grep -Fq "hasText(photo.title)" "$PHOTOS"; then
-  printf '%s\n' "Photos component must require title text before rendering." >&2
+if ! grep -Fq "const VISIBLE_TITLE_CHARACTER" "$PHOTOS" || \
+  ! grep -Fq "\\p{Letter}" "$PHOTOS" || \
+  ! grep -Fq "\\p{Number}" "$PHOTOS" || \
+  ! grep -Fq "\\p{Punctuation}" "$PHOTOS" || \
+  ! grep -Fq "\\p{Symbol}" "$PHOTOS" || \
+  ! grep -Fq "hasVisibleTitle(photo.title)" "$PHOTOS"; then
+  printf '%s\n' "Photos component must require a visible title character before rendering." >&2
   exit 1
 fi
 
@@ -1334,6 +1356,17 @@ if ! grep -Fq "photo item is missing render fields" "$APP_TEST"; then
   printf '%s\n' "Tests must cover malformed photo item responses." >&2
   exit 1
 fi
+
+for visible_title_contract in \
+  "['format-only', '\\u200b\\u200d']" \
+  "['combining-mark-only', '\\u0301\\u034f']" \
+  "renders an error state for a %s photo title" \
+  "renders a visible Unicode photo title"; do
+  if ! grep -Fq "$visible_title_contract" "$APP_TEST"; then
+    printf '%s\n' "Visible photo title test contract is missing: $visible_title_contract" >&2
+    exit 1
+  fi
+done
 
 if ! grep -Fq "photo ids are duplicated" "$APP_TEST"; then
   printf '%s\n' "Tests must cover duplicate photo id responses." >&2

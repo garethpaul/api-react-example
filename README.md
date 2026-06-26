@@ -131,6 +131,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   not receive the application page URL.
 - Accepted photo titles and thumbnail URLs are normalized before they are used
   in headings, alt text, and image sources.
+- Photo titles must contain a visible letter, number, punctuation mark, or
+  symbol; format-only and combining-mark-only values use the error state.
 - Photo IDs must be unique after React key coercion before cards are rendered.
 - Photo IDs must be non-empty strings or finite numbers and are normalized
   before React keys are rendered.

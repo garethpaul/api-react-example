@@ -34,6 +34,8 @@ Priority:
 - Keep streamed response bytes in one contiguous bounded buffer
 - Reject malformed or empty response stream chunks before buffer writes
 - Validate API item shape before rendering photo cards
+- Require a visible letter, number, punctuation mark, or symbol in every photo
+  title before using it in headings and image alternatives
 - Render only HTTPS thumbnail URLs from the API response
 - Reject thumbnail URLs with embedded credentials before DOM rendering
 - Backend-provided thumbnail URLs cannot explicitly target localhost, loopback, private, link-local, or unspecified IP literals before rendering; DNS-style hosts are not resolved by this syntactic check.
