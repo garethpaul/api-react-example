@@ -61,6 +61,8 @@
 - Backend-provided thumbnail URLs reject the non-global local-use NAT64 prefix `64:ff9b:1::/48` and blocked IPv4 addresses embedded in the well-known `64:ff9b::/96` prefix while preserving well-known NAT64 literals that embed public IPv4 addresses.
 - Backend-provided thumbnail URLs use only the default HTTPS port before rendering; browser code cannot inspect DNS answers or the connected peer.
 - Accepted photo titles and thumbnail URLs are normalized before they are used in headings, alt text, and image sources.
+- Photo titles containing only Unicode format or combining-mark characters use
+  the existing error state instead of rendering blank headings or alt text.
 - Photo IDs must be unique after React key coercion before cards are rendered.
 - Each photo load owns its abort controller and timeout; only the active request may update state or clear request resources.
 - Expired photo requests cancel late fetch responses before response metadata or stream access.

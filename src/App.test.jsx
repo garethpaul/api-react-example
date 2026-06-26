@@ -649,6 +649,46 @@ test('renders an error state when a photo item is missing render fields', async 
   expect(screen.queryByText('Missing thumbnail')).not.toBeInTheDocument();
 });
 
+test.each([
+  ['format-only', '\u200b\u200d'],
+  ['combining-mark-only', '\u0301\u034f'],
+])('renders an error state for a %s photo title', async (_, title) => {
+  mockFetchSuccess([
+    {
+      id: 1,
+      title,
+      thumbnailUrl: 'https://example.com/invisible-title.jpg',
+    },
+  ]);
+
+  render(<Photos />);
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Unable to load photos.',
+  );
+  expect(screen.queryByRole('img')).not.toBeInTheDocument();
+});
+
+test.each(['Cafe\u0301', '👩‍💻'])(
+  'renders a visible Unicode photo title: %s',
+  async (title) => {
+    mockFetchSuccess([
+      {
+        id: 1,
+        title,
+        thumbnailUrl: 'https://example.com/visible-title.jpg',
+      },
+    ]);
+
+    render(<Photos />);
+
+    expect(
+      await screen.findByRole('heading', { name: title }),
+    ).toBeInTheDocument();
+    expect(screen.getByAltText(title)).toBeInTheDocument();
+  },
+);
+
 test('renders an error state when photo ids are duplicated', async () => {
   mockFetchSuccess([
     {

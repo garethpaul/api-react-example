@@ -8,6 +8,15 @@
 - Backend-provided thumbnail URLs use only the default HTTPS port before rendering; browser code cannot inspect DNS answers or the connected peer.
 - Expired photo requests cancel late fetch responses before response metadata or stream access.
 
+## 2026-06-26
+
+- Rejected photo titles containing only Unicode format or combining-mark
+  characters before they can render blank headings and image alternatives.
+- Added component regressions for invisible-only titles while preserving
+  decomposed visible text and emoji sequences.
+- Added static, guidance, and completed-plan contracts for the visible-title
+  boundary.
+
 ## 2026-06-19
 
 - Replaced textual workflow checks with a semantic policy that preserves the
