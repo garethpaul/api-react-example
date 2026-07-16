@@ -433,8 +433,12 @@ if ! grep -Fq "role=\"alert\"" "$PHOTOS"; then
   exit 1
 fi
 
-if ! grep -Fq "MAX_PHOTOS = 12" "$PHOTOS"; then
-  printf '%s\n' "Photos component must cap rendered API results." >&2
+# Anchor the whole declaration. `grep -Fq "MAX_PHOTOS = 12"` is a substring match,
+# so `MAX_PHOTOS = 12000` satisfied it directly -- the cap could be raised
+# hundredfold without this gate noticing. The real enforcement is
+# src/App.test.jsx, which now pins the expected value independently.
+if ! grep -Eq '^export const MAX_PHOTOS = 12;$' "$PHOTOS"; then
+  printf '%s\n' "Photos component must cap rendered API results at 12." >&2
   exit 1
 fi
 

@@ -1052,8 +1052,19 @@ test('renders an error state when a malformed photo is beyond the render limit',
   expect(screen.queryByText('Photo 1')).not.toBeInTheDocument();
 });
 
+// The expected cap is written out rather than read from MAX_PHOTOS. Deriving both
+// the fixture and the assertion from the constant makes the test tautological: it
+// can only ever prove "the cap equals MAX_PHOTOS", which is true for any value.
+// Pinning the number here means changing the constant fails this test, which is
+// the pattern Excel-Parser in this account already uses.
+const EXPECTED_MAX_PHOTOS = 12;
+
+test('MAX_PHOTOS stays at the reviewed cap', () => {
+  expect(MAX_PHOTOS).toBe(EXPECTED_MAX_PHOTOS);
+});
+
 test('limits rendered photos from large API responses', async () => {
-  const manyPhotos = Array.from({ length: MAX_PHOTOS + 1 }, (_, index) => ({
+  const manyPhotos = Array.from({ length: EXPECTED_MAX_PHOTOS + 1 }, (_, index) => ({
     id: index + 1,
     title: `Photo ${index + 1}`,
     thumbnailUrl: `https://example.com/${index + 1}.jpg`,
@@ -1063,6 +1074,8 @@ test('limits rendered photos from large API responses', async () => {
   render(<Photos />);
 
   expect(await screen.findByText('Photo 1')).toBeInTheDocument();
-  expect(screen.getByText(`Photo ${MAX_PHOTOS}`)).toBeInTheDocument();
-  expect(screen.queryByText(`Photo ${MAX_PHOTOS + 1}`)).not.toBeInTheDocument();
+  expect(screen.getByText(`Photo ${EXPECTED_MAX_PHOTOS}`)).toBeInTheDocument();
+  expect(
+    screen.queryByText(`Photo ${EXPECTED_MAX_PHOTOS + 1}`),
+  ).not.toBeInTheDocument();
 });
