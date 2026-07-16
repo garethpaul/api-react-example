@@ -1064,11 +1064,14 @@ test('MAX_PHOTOS stays at the reviewed cap', () => {
 });
 
 test('limits rendered photos from large API responses', async () => {
-  const manyPhotos = Array.from({ length: EXPECTED_MAX_PHOTOS + 1 }, (_, index) => ({
-    id: index + 1,
-    title: `Photo ${index + 1}`,
-    thumbnailUrl: `https://example.com/${index + 1}.jpg`,
-  }));
+  const manyPhotos = Array.from(
+    { length: EXPECTED_MAX_PHOTOS + 1 },
+    (_, index) => ({
+      id: index + 1,
+      title: `Photo ${index + 1}`,
+      thumbnailUrl: `https://example.com/${index + 1}.jpg`,
+    }),
+  );
   mockFetchSuccess(manyPhotos);
 
   render(<Photos />);
