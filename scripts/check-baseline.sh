@@ -57,6 +57,13 @@ if ! grep -Fq 'authority-test build check dependency-policy lint test verify wor
   exit 1
 fi
 
+if ! grep -Fxq 'verify:: authority-test lint test build' "$MAKEFILE" || \
+   ! grep -Fxq 'check:: verify' "$MAKEFILE" || \
+   ! grep -Fxq 'authority-test::' "$MAKEFILE"; then
+  printf '%s\n' "Makefile check must reach the Make authority suite, lint, test, and build through verify." >&2
+  exit 1
+fi
+
 if [ ! -x "$ROOT_DIR/scripts/test-makefile-authority.sh" ]; then
   printf '%s\n' "Make authority regression suite must remain executable." >&2
   exit 1
