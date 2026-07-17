@@ -75,10 +75,18 @@ cp "$ROOT_DIR/Makefile" "$CHECKOUT/Makefile"
 cat >"$CHECKOUT/bin/node" <<'EOF'
 #!/bin/sh
 printf '%s|node %s\n' "$PWD" "$*" >>"$API_REACT_COMMAND_LOG"
+if [ "${API_REACT_FAIL_COMMAND:-}" = "node $*" ]; then
+  printf '%s\n' "injected failure: node $*" >&2
+  exit 1
+fi
 EOF
 cat >"$CHECKOUT/bin/corepack" <<'EOF'
 #!/bin/sh
 printf '%s|corepack %s\n' "$PWD" "$*" >>"$API_REACT_COMMAND_LOG"
+if [ "${API_REACT_FAIL_COMMAND:-}" = "corepack $*" ]; then
+  printf '%s\n' "injected failure: corepack $*" >&2
+  exit 1
+fi
 EOF
 chmod +x "$CHECKOUT/bin/node" "$CHECKOUT/bin/corepack"
 
@@ -86,6 +94,10 @@ for script in test-dependency-policy.sh test-workflow-policy.sh check-baseline.s
   cat >"$CHECKOUT/scripts/$script" <<'EOF'
 #!/bin/sh
 printf '%s|script %s\n' "$PWD" "$0" >>"$API_REACT_COMMAND_LOG"
+if [ "${API_REACT_FAIL_COMMAND:-}" = "script $0" ]; then
+  printf '%s\n' "injected failure: script $0" >&2
+  exit 1
+fi
 EOF
   chmod +x "$CHECKOUT/scripts/$script"
 done
@@ -107,7 +119,49 @@ exec /bin/sh "\$@"
 EOF
 chmod +x "$FAKE_SHELL"
 
-for target in dependency-policy workflow-policy lint test build verify check; do
+expected_commands() {
+  case $1 in
+  dependency-policy)
+    printf '%s\n' \
+      'node scripts/check-dependency-policy.mjs' \
+      'script scripts/test-dependency-policy.sh'
+    ;;
+  workflow-policy)
+    printf '%s\n' \
+      'node scripts/check-workflow-policy.mjs' \
+      'script scripts/test-workflow-policy.sh'
+    ;;
+  authority-test)
+    printf '%s\n' 'script scripts/test-makefile-authority.sh'
+    ;;
+  lint)
+    expected_commands workflow-policy
+    expected_commands dependency-policy
+    printf '%s\n' \
+      'script scripts/check-baseline.sh' \
+      'corepack yarn lint' \
+      'corepack yarn format:check'
+    ;;
+  test)
+    printf '%s\n' 'corepack yarn test'
+    ;;
+  build)
+    printf '%s\n' 'corepack yarn build'
+    ;;
+  verify | check)
+    expected_commands authority-test
+    expected_commands lint
+    expected_commands test
+    expected_commands build
+    ;;
+  *)
+    printf '%s\n' "no expected command dispatch is declared for target $1" >&2
+    exit 1
+    ;;
+  esac
+}
+
+for target in dependency-policy workflow-policy authority-test lint test build verify check; do
   : >"$COMMAND_LOG"
   (
     cd "$CONTROL_DIR"
@@ -125,6 +179,35 @@ for target in dependency-policy workflow-policy lint test build verify check; do
     cat "$COMMAND_LOG" >&2
     exit 1
   fi
+  expected_commands "$target" >"$TEMP_ROOT/expected-$target"
+  sed 's/^[^|]*|//' "$COMMAND_LOG" >"$TEMP_ROOT/observed-$target"
+  if ! cmp -s "$TEMP_ROOT/expected-$target" "$TEMP_ROOT/observed-$target"; then
+    printf '%s\n' "$target did not dispatch its declared repository commands" >&2
+    printf '%s\n' '--- expected ---' >&2
+    cat "$TEMP_ROOT/expected-$target" >&2
+    printf '%s\n' '--- observed ---' >&2
+    cat "$TEMP_ROOT/observed-$target" >&2
+    exit 1
+  fi
+done
+
+dispatch_failure_checks=0
+for target in dependency-policy workflow-policy authority-test lint test build verify check; do
+  while IFS= read -r expected_command; do
+    : >"$COMMAND_LOG"
+    if (
+      cd "$CONTROL_DIR"
+      API_REACT_COMMAND_LOG="$COMMAND_LOG" \
+        API_REACT_FAIL_COMMAND="$expected_command" \
+        PATH="$CHECKOUT/bin:$PATH" \
+        "$MAKE_COMMAND" --no-print-directory -f "$CHECKOUT/Makefile" "$target" \
+        ROOT=/tmp/api-react-attacker NODE="$BAD_COMMAND" YARN="$BAD_COMMAND" SHELL="$FAKE_SHELL"
+    ) >/dev/null 2>&1; then
+      printf '%s\n' "$target ignored a failure from its dispatched command: $expected_command" >&2
+      exit 1
+    fi
+    dispatch_failure_checks=$((dispatch_failure_checks + 1))
+  done <"$TEMP_ROOT/expected-$target"
 done
 
 if [ -e "$BAD_COMMAND_LOG" ]; then
@@ -140,4 +223,4 @@ if [ -e "$CHECKOUT/API_REACT_PATH_MARKER" ] || [ -e "$CONTROL_DIR/API_REACT_PATH
   exit 1
 fi
 
-printf '%s\n' "API React Make authority tests passed: 2 replacement/append rejections, 1 startup rejection, 1 no-op later-file rejection, 3 caller-variable rejections, 10 unsafe mode rejections, and 7 live target checks"
+printf '%s\n' "API React Make authority tests passed: 2 replacement/append rejections, 1 startup rejection, 1 no-op later-file rejection, 3 caller-variable rejections, 10 unsafe mode rejections, 8 declared command dispatch checks, and $dispatch_failure_checks dispatched command failure propagation checks"

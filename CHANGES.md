@@ -1,5 +1,44 @@
 # API React Example Changes
 
+## 2026-07-17 - P1 - Assert which commands verification dispatches
+
+### Summary
+
+Closed a false-green verification boundary where `make check` could report
+success while never executing the component test suite, ESLint, Prettier, or
+the baseline checker. The live target checks added with the Make invocation
+authority work asserted only that each target dispatched _some_ repository
+command, so removing one command from a multi-command target — or removing a
+prerequisite from `verify` — left the log non-empty and the gate green.
+
+### Work completed
+
+- Declared the exact command dispatch expected for every public target and
+  compared it whole-line and in order against the observed dispatch log, so a
+  deleted, neutered, or relocated invocation now fails `check`.
+- Added `authority-test` to the dispatched-target coverage list.
+- Added failure injection to the Node, Corepack, and script stubs, and asserted
+  that every dispatched command's failure propagates, so `|| true` and similar
+  status-swallowing neuters now fail `check`.
+- Pinned the `verify` prerequisite wiring whole-line so the authority suite
+  cannot be silently unhooked from `check`.
+
+### Files changed
+
+- `scripts/test-makefile-authority.sh` — declared dispatch comparison and
+  per-command failure propagation coverage.
+- `scripts/check-baseline.sh` — whole-line `verify`/`check` wiring contract.
+
+### Validation
+
+- `make check` on a clean tree — passed; 128 component tests, 8 declared
+  command dispatch checks, and 34 dispatched command failure propagation
+  checks.
+- Eleven mutation probes (invocation deletion, `@echo`/`echo` neutering,
+  verbatim relocation into an unused target, prerequisite removal, and
+  `|| true` status swallowing) — each previously green where noted, now each
+  fails `check`.
+
 ## 2026-06-26 14:29 PDT - P1 - Make verification invocation authoritative
 
 ### Summary
